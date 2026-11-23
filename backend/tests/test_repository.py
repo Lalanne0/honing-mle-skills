@@ -32,7 +32,7 @@ T0 = datetime(2026, 11, 23, 12, 0, tzinfo=UTC)
 
 def challenge(
     level: Level = Level.MID,
-    topic: Topic = Topic.RECOMMENDATION,
+    topic: Topic = Topic.RECOMMENDER_SYSTEMS,
     created_at: datetime = T0,
     state: State | None = None,
     rounds: tuple[Round, ...] = (),
@@ -170,7 +170,7 @@ def test_list_filters_by_topic_and_level(repo: ChallengeRepository) -> None:
     combos = [
         (lv, tp)
         for lv in (Level.JUNIOR, Level.SENIOR)
-        for tp in (Topic.SEARCH_RANKING, Topic.MODEL_SERVING)
+        for tp in (Topic.RECOMMENDER_SYSTEMS, Topic.MODEL_SERVING)
     ]
     for i, (level, topic) in enumerate(combos):
         repo.create(challenge(level=level, topic=topic, created_at=T0 + timedelta(minutes=i)))
@@ -184,10 +184,10 @@ def test_list_filters_by_topic_and_level(repo: ChallengeRepository) -> None:
     ]
     assert keys(repo.list(level=Level.JUNIOR)) == [
         (Level.JUNIOR, Topic.MODEL_SERVING),
-        (Level.JUNIOR, Topic.SEARCH_RANKING),
+        (Level.JUNIOR, Topic.RECOMMENDER_SYSTEMS),
     ]
-    assert keys(repo.list(topic=Topic.SEARCH_RANKING, level=Level.SENIOR)) == [
-        (Level.SENIOR, Topic.SEARCH_RANKING)
+    assert keys(repo.list(topic=Topic.RECOMMENDER_SYSTEMS, level=Level.SENIOR)) == [
+        (Level.SENIOR, Topic.RECOMMENDER_SYSTEMS)
     ]
 
 
