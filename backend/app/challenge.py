@@ -10,9 +10,7 @@ from uuid import UUID, uuid4
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-from app.domain import MAX_ROUNDS, Level, NonBlank, Rubric, State, Topic, Verdict
-
-Score = Annotated[int, Field(ge=0, le=5)]
+from app.domain import MAX_ROUNDS, Level, NonBlank, Rubric, Score, State, Topic, Verdict
 
 
 class _Value(BaseModel):
