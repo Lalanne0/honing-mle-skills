@@ -10,7 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 MAX_ROUNDS = 3
 
-NonBlank = Annotated[str, Field(min_length=1)]
+NonBlank = Annotated[str, Field(pattern=r"\S")]
+"""Text with at least one visible character. Kept as given, not stripped."""
 
 
 class _Value(BaseModel):

@@ -71,12 +71,13 @@ def test_dimension_weight_must_be_positive(weight: float) -> None:
         Dimension(key="data", name="Data", weight=weight, full_marks_criteria="x")
 
 
+@pytest.mark.parametrize("blank", ["", "   ", "\n\t"])
 @pytest.mark.parametrize("field", ["key", "name", "full_marks_criteria"])
-def test_dimension_text_fields_must_not_be_blank(field: str) -> None:
+def test_dimension_text_fields_must_not_be_blank(field: str, blank: str) -> None:
     values = {"key": "data", "name": "Data", "weight": 1.0, "full_marks_criteria": "x"}
 
     with pytest.raises(ValidationError):
-        Dimension.model_validate({**values, field: ""})
+        Dimension.model_validate({**values, field: blank})
 
 
 # --- verdict -----------------------------------------------------------------
@@ -91,9 +92,14 @@ def test_verdict_parses_as_a_tagged_union() -> None:
     assert adapter.validate_python({"kind": "complete"}) == Complete()
 
 
-def test_follow_up_needs_a_question() -> None:
+@pytest.mark.parametrize("blank", ["", "   ", "\n\t"])
+def test_follow_up_needs_a_question(blank: str) -> None:
     with pytest.raises(ValidationError):
-        FollowUp(question="")
+        FollowUp(question=blank)
+
+
+def test_text_fields_keep_ordinary_text_as_given() -> None:
+    assert FollowUp(question=" Why? ").question == " Why? "
 
 
 # --- state -------------------------------------------------------------------
