@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -80,6 +80,18 @@ def test_a_created_challenge_reads_back_as_the_same_domain_object(
     repo.create(original)
 
     assert repo.get(original.id) == original
+
+
+def test_a_non_utc_creation_time_reads_back_as_the_same_instant_in_utc(
+    repo: ChallengeRepository,
+) -> None:
+    paris = timezone(timedelta(hours=2))
+    original = challenge(created_at=datetime(2026, 11, 23, 14, 0, tzinfo=paris))
+
+    repo.create(original)
+
+    assert repo.get(original.id).created_at == T0
+    assert repo.get(original.id).created_at.utcoffset() == timedelta(0)
 
 
 def test_reading_an_unknown_challenge_raises(repo: ChallengeRepository) -> None:
