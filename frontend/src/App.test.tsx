@@ -30,6 +30,14 @@ describe('App', () => {
     expect(await screen.findByText('Backend: unreachable')).toBeInTheDocument()
   })
 
+  it('shows the backend as unreachable on an error status even if the body says ok', async () => {
+    stubFetch(Promise.resolve(new Response(JSON.stringify({ status: 'ok' }), { status: 503 })))
+
+    render(<App />)
+
+    expect(await screen.findByText('Backend: unreachable')).toBeInTheDocument()
+  })
+
   it('ignores a late failure from an abandoned StrictMode effect run', async () => {
     let rejectFirst: (reason: unknown) => void = () => {}
     const first = new Promise<Response>((_, reject) => {

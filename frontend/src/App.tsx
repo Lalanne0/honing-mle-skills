@@ -5,6 +5,7 @@ type Health = 'checking' | 'ok' | 'unreachable'
 async function fetchHealth(): Promise<Health> {
   try {
     const response = await fetch('/api/health')
+    if (!response.ok) return 'unreachable'
     const body: unknown = await response.json()
     return (body as { status?: unknown }).status === 'ok' ? 'ok' : 'unreachable'
   } catch {
