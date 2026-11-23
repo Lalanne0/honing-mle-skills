@@ -221,3 +221,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# honing-mle-skills
+backend/data/
+.metrics/
+target/
+frontend/coverage/
+.playwright-mcp/
