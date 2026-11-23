@@ -9,7 +9,7 @@ FastAPI + SQLModel/SQLite + Anthropic SDK (`claude-sonnet-5-5`) · React + Vite 
 make dev      # backend on 127.0.0.1:8000, frontend on 127.0.0.1:5173
 make test     # backend pytest + frontend vitest
 make lint     # ruff, mypy --strict, eslint, tsc
-make e2e      # Playwright suite, LLM_MODE=fake (no API key, no cost)
+make e2e      # Playwright suite, LLM_MODE=fake (no API key, no cost) — added by VIN-20
 make crap     # CRAP scores        (~/tools/crapper, override with TOOLS_DIR=...)
 make dry      # duplicate code     (~/tools/dryer)
 make mutate   # mutation testing   (~/tools/mutator)
