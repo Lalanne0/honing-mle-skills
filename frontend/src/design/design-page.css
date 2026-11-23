@@ -1,0 +1,49 @@
+.design {
+  max-width: 880px;
+  margin: 0 auto;
+  padding-block: var(--space-6) 160px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: var(--space-6);
+}
+.design__header {
+  display: grid;
+  gap: var(--space-2);
+}
+.design__header h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+}
+.design__header p {
+  margin: 0;
+  color: var(--muted);
+}
+.design__themes,
+.design__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.design__specimen {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.design__specimen h2 {
+  margin: 0;
+  font: 600 var(--text-xs) / 1 var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.design__stack {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 520px;
+}
+.design__prose {
+  margin: 0;
+  max-width: var(--measure);
+}

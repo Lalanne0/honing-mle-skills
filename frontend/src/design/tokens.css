@@ -1,0 +1,92 @@
+/*
+ * Field Notes design tokens (VIN-14, direction C).
+ * Light values on :root; dark values follow the OS unless data-theme pins a choice.
+ * Semantic colours: --ok for a strong answer, --warn for a partial one. There is no
+ * "wrong" red, because system design has no single right answer.
+ */
+:root {
+  --bg: #f2f4ee;
+  --surface: #fbfcf8;
+  --fg: #2a2d27;
+  --muted: #646b5e;
+  --line: #dde2d4;
+  --track: #e3e7da;
+  --accent: #7a4f96;
+  --accent-deep: #5f3b77;
+  --accent-ink: #ffffff;
+  --accent-soft: #ece2f2;
+  --ok: #3f7a4c;
+  --ok-soft: #e1eedf;
+  --warn: #8f6112;
+  --warn-soft: #f5ead2;
+
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-body: 'Source Serif 4 Variable', Georgia, serif;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.6rem;
+  --text-2xl: 2.2rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow: 0 1px 2px rgb(40 50 30 / 8%), 0 6px 18px rgb(40 50 30 / 6%);
+  --measure: 70ch;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1c1f1a;
+    --surface: #252922;
+    --fg: #ecefe6;
+    --muted: #a6ad9c;
+    --line: #363b31;
+    --track: #363b31;
+    --accent: #c59be0;
+    --accent-deep: #a678c4;
+    --accent-ink: #1c1f1a;
+    --accent-soft: #3a2f42;
+    --ok: #8cc596;
+    --ok-soft: #27372a;
+    --warn: #e2b25a;
+    --warn-soft: #3b3221;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 18px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #1c1f1a;
+  --surface: #252922;
+  --fg: #ecefe6;
+  --muted: #a6ad9c;
+  --line: #363b31;
+  --track: #363b31;
+  --accent: #c59be0;
+  --accent-deep: #a678c4;
+  --accent-ink: #1c1f1a;
+  --accent-soft: #3a2f42;
+  --ok: #8cc596;
+  --ok-soft: #27372a;
+  --warn: #e2b25a;
+  --warn-soft: #3b3221;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 18px rgb(0 0 0 / 25%);
+  color-scheme: dark;
+}
