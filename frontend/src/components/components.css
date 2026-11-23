@@ -125,6 +125,8 @@
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-5) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -8px 24px rgb(0 0 0 / 12%);
+  max-height: 100dvh;
+  overflow-y: auto;
   animation: sheet-up 220ms ease-out;
 }
 .sheet[data-tone='strong'] {

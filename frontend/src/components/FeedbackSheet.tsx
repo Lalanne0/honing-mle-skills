@@ -11,7 +11,8 @@ type FeedbackSheetProps = {
 }
 
 export function FeedbackSheet({ open, tone, headline, actionLabel, onAction, children }: FeedbackSheetProps) {
-  if (!open) return null
+  // The live region stays mounted while closed so screen readers announce it when it fills.
+  if (!open) return <div role="status" />
   return (
     <div className="sheet" role="status" data-tone={tone}>
       <div className="sheet__inner">

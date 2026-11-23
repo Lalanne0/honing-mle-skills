@@ -30,13 +30,15 @@ describe('FeedbackSheet', () => {
     expect(onAction).toHaveBeenCalledOnce()
   })
 
-  it('renders nothing when closed', () => {
-    render(
-      <FeedbackSheet open={false} tone="strong" headline="Solid design!" actionLabel="See reference" onAction={() => {}}>
-        Hidden.
-      </FeedbackSheet>,
-    )
+  it('keeps an empty live region mounted while closed, so opening it is announced', () => {
+    const props = { tone: 'strong', headline: 'Solid design!', actionLabel: 'See reference', onAction: () => {} } as const
+    const { rerender } = render(<FeedbackSheet open={false} {...props}>Covers the tradeoffs.</FeedbackSheet>)
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    const region = screen.getByRole('status')
+    expect(region).toBeEmptyDOMElement()
+
+    rerender(<FeedbackSheet open {...props}>Covers the tradeoffs.</FeedbackSheet>)
+    expect(screen.getByRole('status')).toBe(region)
+    expect(region).toHaveTextContent('Solid design!')
   })
 })

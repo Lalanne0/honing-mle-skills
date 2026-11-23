@@ -44,7 +44,7 @@ describe('DesignPage', () => {
     expect(sheet).toHaveTextContent('Getting there')
 
     await userEvent.click(within(sheet).getByRole('button', { name: 'Answer follow-up' }))
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
 
     await userEvent.click(screen.getByRole('button', { name: 'Show strong feedback' }))
     expect(screen.getByRole('status')).toHaveTextContent('Solid design!')
