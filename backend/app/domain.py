@@ -3,19 +3,27 @@
 Terms are defined in docs/glossary.md.
 """
 
+from collections.abc import Iterable
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 MAX_ROUNDS = 3
+MAX_SCORE = 5
 
 NonBlank = Annotated[str, Field(pattern=r"\S")]
 """Text with at least one visible character. Kept as given, not stripped."""
 
 
+def _tag_is_required(schema: dict[str, Any]) -> None:
+    """A tagged-union member must send its `kind`, even though the field has a default."""
+    if "kind" in schema["properties"]:
+        schema["required"] = ["kind", *schema.get("required", [])]
+
+
 class _Value(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", json_schema_extra=_tag_is_required)
 
 
 class Level(StrEnum):
@@ -25,19 +33,23 @@ class Level(StrEnum):
 
 
 class Topic(StrEnum):
-    RECOMMENDATION = "recommendation"
-    SEARCH_RANKING = "search_ranking"
-    ADS_CTR_PREDICTION = "ads_ctr_prediction"
-    FRAUD_DETECTION = "fraud_detection"
-    CONTENT_MODERATION = "content_moderation"
-    FEATURE_STORE = "feature_store"
-    TRAINING_PIPELINE = "training_pipeline"
+    RAG_AND_LLM_APPS = "rag_and_llm_apps"
     MODEL_SERVING = "model_serving"
-    MONITORING_AND_DRIFT = "monitoring_and_drift"
-    EXPERIMENTATION = "experimentation"
+    BATCH_VS_STREAMING_INFERENCE = "batch_vs_streaming_inference"
+    TRAINING_PIPELINES = "training_pipelines"
+    FEATURE_STORES = "feature_stores"
+    MLOPS_MONITORING_AND_DRIFT = "mlops_monitoring_and_drift"
+    DATA_PIPELINES = "data_pipelines"
+    RECOMMENDER_SYSTEMS = "recommender_systems"
+    AB_TESTING_AND_EXPERIMENTATION = "ab_testing_and_experimentation"
+    PRIVACY_AND_SECURITY = "privacy_and_security"
 
 
 # --- rubric ------------------------------------------------------------------
+
+
+Score = Annotated[int, Field(ge=0, le=MAX_SCORE)]
+"""How well an answer meets one dimension, from 0 to MAX_SCORE."""
 
 
 class Dimension(_Value):
@@ -57,6 +69,16 @@ class Rubric(_Value):
         if len(set(keys)) != len(keys):
             raise ValueError(f"dimension keys must be unique, got {keys}")
         return dimensions
+
+    def check_keys(self, keys: Iterable[str]) -> None:
+        """Raise ValueError unless `keys` are exactly this rubric's dimension keys."""
+        expected = {d.key for d in self.dimensions}
+        given = set(keys)
+        missing, unexpected = sorted(expected - given), sorted(given - expected)
+        if missing or unexpected:
+            raise ValueError(
+                f"keys must match the rubric dimensions: missing {missing}, unexpected {unexpected}"
+            )
 
 
 # --- verdict -----------------------------------------------------------------

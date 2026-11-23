@@ -6,16 +6,17 @@ Use these terms the same way in code, UI and issues. Code names are in `backend/
 |---|---|---|
 | **Challenge** | — | One ML system-design interview question at a chosen level and topic. It is answered over one to three rounds and comes with a hidden reference solution and rubric. |
 | **Level** | `Level` | The seniority the challenge targets: `junior`, `mid` or `senior`. |
-| **Topic** | `Topic` | The ML system-design area the challenge is about (for example `recommendation` or `model_serving`). There are 10. |
+| **Topic** | `Topic` | The ML system-design area the challenge is about. There are 10: RAG & LLM apps (`rag_and_llm_apps`), model serving (`model_serving`), batch vs streaming inference (`batch_vs_streaming_inference`), training pipelines (`training_pipelines`), feature stores (`feature_stores`), MLOps & monitoring/drift (`mlops_monitoring_and_drift`), data pipelines (`data_pipelines`), recommender systems (`recommender_systems`), A/B testing & experimentation (`ab_testing_and_experimentation`), privacy & security (`privacy_and_security`). |
 | **Round** | `Awaiting.round` | One answer from the user and its grade. A challenge has at most `MAX_ROUNDS` = 3 rounds. |
 | **Rubric** | `Rubric` | How answers are graded: 3 to 6 dimensions with unique keys. Hidden until reveal. |
 | **Dimension** | `Dimension` | One graded aspect of an answer: a `key`, a display `name`, a positive `weight`, and the `full_marks_criteria` an answer must meet to score full marks. |
-| **Grade** | `Graded` | The result of grading one round's answer against the rubric. It carries a verdict. |
+| **Score** | `Score` | How well an answer meets one dimension: an integer from 0 to `MAX_SCORE` = 5. |
+| **Grade** | `GradeResult`, `Graded` | The result of grading one round's answer against the rubric: one score per rubric dimension (exactly the rubric's keys, no more, no fewer), a comment and a verdict. `Graded` is the state-machine event; it carries only the verdict. |
 | **Verdict** | `Verdict` | What happens after a round: `FollowUp` (with the follow-up question for the next round) or `Complete`. |
 | **Follow-up** | `FollowUp` | A verdict asking the user one more question. In the last round it completes the challenge instead. |
 | **Reveal** | `RevealRequested`, `Revealed` | Showing the reference solution and rubric to the user. Allowed from any state. Once revealed, the challenge takes no more answers. `Revealed` is final. |
 | **Reference solution** | — | The model answer to a challenge. Like the rubric, it never leaves the backend before reveal. |
-| **Comparison** | — | Shown at reveal: the user's answers side by side with the reference solution, scored per dimension. |
+| **Comparison** | `Comparison` | Shown at reveal: the user's answers side by side with the reference solution, with a summary and one note per rubric dimension. |
 
 ## Challenge states
 
