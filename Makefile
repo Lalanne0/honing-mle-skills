@@ -8,10 +8,7 @@ install:
 	cd frontend && npm install
 
 dev:
-	@trap 'kill 0' EXIT; \
-	(cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app) & \
-	(cd frontend && npm run dev) & \
-	wait
+	./scripts/dev.sh
 
 test:
 	cd backend && uv run pytest -q
