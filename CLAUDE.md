@@ -1,7 +1,7 @@
 # honing-mle-skills
 
 Local, single-user web app for practicing ML engineering system-design interviews.
-FastAPI + SQLModel/SQLite + Anthropic SDK (`claude-sonnet-5-5`) · React + Vite + TypeScript.
+FastAPI + SQLModel/SQLite + `openai` SDK against an OpenAI-compatible LLM gateway (LiteLLM proxy; model from `LLM_MODEL`, currently `anthropic/claude-sonnet-5-5`) · React + Vite + TypeScript.
 
 ## Commands
 
@@ -17,11 +17,11 @@ make mutate   # mutation testing   (~/tools/mutator)
 
 ## Rules
 
-- The Anthropic key lives only in `backend/.env` (gitignored). Never export it, log it, print it, or read it into the conversation.
+- `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` live only in `backend/.env` (gitignored), and settings read them from that file only. Never export `LLM_API_KEY`, log it, print it, or read it into the conversation.
 - Servers bind to 127.0.0.1 only.
 - The reference solution and rubric never leave the backend before reveal. `ChallengePublic` and `ChallengeRevealed` are separate models, and the leak test must stay green.
-- Every LLM call goes through `client.messages.parse` with a Pydantic model, followed by domain validation.
-- Tests use `FakeLLM`. Live tests are marked `-m live` and run only when the user asks, because they cost money.
+- Every LLM call goes through `OpenAICompatibleLLM`: `chat.completions.create` with `response_format` json_schema (`strict: false`), because the gateway isn't trusted to enforce it. The reply is validated with the Pydantic model plus domain validation. On failure, retry once with the validation error, then raise a typed `LLMError`. 429 and 5xx responses also become typed errors.
+- Tests use `FakeLLM`. Live tests are marked `-m live`, go through the gateway, and run only when the user asks, because they cost money.
 - Domain terms are defined in `docs/glossary.md`. Use them consistently in code, UI and issues.
 
 ## Workflow
