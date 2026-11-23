@@ -40,8 +40,19 @@ def test_levels_are_junior_mid_senior() -> None:
     assert [level.value for level in Level] == ["junior", "mid", "senior"]
 
 
-def test_there_are_ten_distinct_topics() -> None:
-    assert len({topic.value for topic in Topic}) == 10
+def test_topics_are_the_ten_ml_system_design_areas() -> None:
+    assert [topic.value for topic in Topic] == [
+        "rag_and_llm_apps",
+        "model_serving",
+        "batch_vs_streaming_inference",
+        "training_pipelines",
+        "feature_stores",
+        "mlops_monitoring_and_drift",
+        "data_pipelines",
+        "recommender_systems",
+        "ab_testing_and_experimentation",
+        "privacy_and_security",
+    ]
 
 
 # --- rubric ------------------------------------------------------------------

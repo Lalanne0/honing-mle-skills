@@ -25,16 +25,16 @@ class Level(StrEnum):
 
 
 class Topic(StrEnum):
-    RECOMMENDATION = "recommendation"
-    SEARCH_RANKING = "search_ranking"
-    ADS_CTR_PREDICTION = "ads_ctr_prediction"
-    FRAUD_DETECTION = "fraud_detection"
-    CONTENT_MODERATION = "content_moderation"
-    FEATURE_STORE = "feature_store"
-    TRAINING_PIPELINE = "training_pipeline"
+    RAG_AND_LLM_APPS = "rag_and_llm_apps"
     MODEL_SERVING = "model_serving"
-    MONITORING_AND_DRIFT = "monitoring_and_drift"
-    EXPERIMENTATION = "experimentation"
+    BATCH_VS_STREAMING_INFERENCE = "batch_vs_streaming_inference"
+    TRAINING_PIPELINES = "training_pipelines"
+    FEATURE_STORES = "feature_stores"
+    MLOPS_MONITORING_AND_DRIFT = "mlops_monitoring_and_drift"
+    DATA_PIPELINES = "data_pipelines"
+    RECOMMENDER_SYSTEMS = "recommender_systems"
+    AB_TESTING_AND_EXPERIMENTATION = "ab_testing_and_experimentation"
+    PRIVACY_AND_SECURITY = "privacy_and_security"
 
 
 # --- rubric ------------------------------------------------------------------
