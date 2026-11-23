@@ -43,7 +43,7 @@ def test_fake_mode_starts_with_the_fake_llm() -> None:
 def test_real_mode_starts_with_the_gateway_llm(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    use_env(tmp_path, monkeypatch, "LLM_BASE_URL=http://g.test/v1\nLLM_API_KEY=k\nLLM_MODEL=m\n")
+    use_env(tmp_path, monkeypatch, "LLM_BASE_URL=https://g.test/v1\nLLM_API_KEY=k\nLLM_MODEL=m\n")
 
     with TestClient(fastapi_app):
         assert isinstance(fastapi_app.state.llm, OpenAICompatibleLLM)

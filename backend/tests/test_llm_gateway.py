@@ -93,7 +93,7 @@ class Gateway:
 
     def llm(self) -> OpenAICompatibleLLM:
         return OpenAICompatibleLLM(
-            base_url="http://gateway.test/v1",
+            base_url="https://gateway.test/v1",
             api_key=SecretStr(KEY),
             model=MODEL,
             http_client=httpx2.Client(transport=httpx2.MockTransport(self)),
@@ -236,14 +236,27 @@ def test_a_truncated_reply_raises_without_retry() -> None:
 @pytest.mark.parametrize(
     ("reply", "reason"),
     [
-        (completion(None, refusal="I can't help with that."), "I can't help with that."),
-        (completion(None, finish_reason="content_filter"), "content filter"),
+        (completion(None, refusal="Private refusal text."), "the model refused to answer"),
+        (completion(None, finish_reason="content_filter"), "the content filter blocked the reply"),
     ],
 )
 def test_a_refusal_raises_without_retry(reply: httpx2.Response, reason: str) -> None:
     gateway = Gateway(reply)
 
-    with pytest.raises(LLMRefusalError, match=f"refused: {reason}$"):
+    with pytest.raises(LLMRefusalError) as caught:
+        gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
+
+    assert str(caught.value) == reason
+
+    assert len(gateway.requests) == 1
+
+
+def test_a_reply_without_choices_is_an_upstream_error() -> None:
+    empty = completion("{}")
+    body = json.loads(empty.content)
+    gateway = Gateway(httpx2.Response(200, json={**body, "choices": []}))
+
+    with pytest.raises(LLMUpstreamError, match="no choices"):
         gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
 
     assert len(gateway.requests) == 1

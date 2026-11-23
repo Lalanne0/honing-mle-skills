@@ -8,6 +8,7 @@ shell may override it (for example `LLM_MODE=fake make dev`).
 
 from pathlib import Path
 from typing import Any, Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import (
@@ -20,6 +21,13 @@ from pydantic_settings import (
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 LLMMode = Literal["real", "fake"]
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _is_safe_for_the_key(base_url: str) -> bool:
+    """The key may travel over https, or over plain http to a gateway on this machine."""
+    url = urlsplit(base_url)
+    return url.scheme == "https" or (url.scheme == "http" and url.hostname in LOOPBACK_HOSTS)
 
 
 class _ModeFromShell(EnvSettingsSource):
@@ -60,6 +68,8 @@ class Settings(BaseSettings):
         missing = [name for name, value in values.items() if not value.strip()]
         if missing:
             raise ValueError(f"set {', '.join(missing)} in backend/.env (or LLM_MODE=fake)")
+        if not _is_safe_for_the_key(self.llm_base_url):
+            raise ValueError("LLM_BASE_URL must use https unless the gateway is on loopback")
         return self
 
 

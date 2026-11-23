@@ -63,11 +63,15 @@ def _typed_error(error: openai.APIError) -> LLMError:
 
 def _reply_text(completion: ChatCompletion) -> str:
     """The reply's content, or a typed error when it was cut off or refused."""
+    if not completion.choices:
+        raise LLMUpstreamError("the gateway returned no choices")
     choice = completion.choices[0]
     if choice.finish_reason == "length":
         raise LLMTruncatedError("the reply hit the token limit before it was complete")
-    if choice.message.refusal or choice.finish_reason == "content_filter":
-        raise LLMRefusalError(f"the model refused: {choice.message.refusal or 'content filter'}")
+    if choice.finish_reason == "content_filter":
+        raise LLMRefusalError("the content filter blocked the reply")
+    if choice.message.refusal:
+        raise LLMRefusalError("the model refused to answer")
     return choice.message.content or ""
 
 
