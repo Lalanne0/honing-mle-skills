@@ -16,7 +16,13 @@ function App() {
   const [health, setHealth] = useState<Health>('checking')
 
   useEffect(() => {
-    void fetchHealth().then(setHealth)
+    let active = true
+    void fetchHealth().then((result) => {
+      if (active) setHealth(result)
+    })
+    return () => {
+      active = false
+    }
   }, [])
 
   return (
