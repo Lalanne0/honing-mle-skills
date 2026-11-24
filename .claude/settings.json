@@ -9,6 +9,7 @@
       "Bash(git worktree prune)",
       "Bash(git -C ../hms-vin* status:*)",
       "Bash(git -C ../hms-vin* branch --show-current)",
+      "Bash(git -C ../hms-vin* rev-parse HEAD)",
       "Bash(git worktree list --porcelain)",
       "Bash(git update-ref -d refs/heads/vlalanne0/vin-*)",
       "Bash(git ls-remote --heads origin vlalanne0/vin-*)",

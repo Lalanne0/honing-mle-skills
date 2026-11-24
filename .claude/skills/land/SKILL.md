@@ -89,9 +89,12 @@ First confirm the worktree belongs to this PR. A later `/next` may have reused t
 
 ```
 git -C ../hms-vin<N> branch --show-current
+git -C ../hms-vin<N> rev-parse HEAD
 ```
 
-If it prints something other than `<headRefName>`, leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and skip to the branch deletion. If the path does not exist, go on.
+- If the branch is not `<headRefName>`, the path was reused. Leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and skip to the branch deletion.
+- If the branch matches but HEAD is not `<headRefOid>`, the worker committed after the merge. Stop and report it, removing nothing, so that work is not lost.
+- If the path does not exist, go on.
 
 ```
 git worktree remove ../hms-vin<N>
