@@ -166,3 +166,57 @@
     transform: translateY(0);
   }
 }
+
+/* Loading and error states, shared by every page that waits on the backend.
+   Errors use the amber "partial" tone: the design system has no alarm red. */
+.state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  max-width: var(--measure);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.state[data-tone='error'] {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+}
+.state[role='status'] {
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: start;
+}
+.state__headline {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.state[data-tone='error'] .state__headline {
+  color: var(--warn);
+}
+.state__text {
+  margin: 0;
+  color: var(--muted);
+}
+.state[data-tone='error'] .state__text {
+  color: var(--fg);
+}
+.state__pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: state-pulse 1.2s ease-in-out infinite;
+}
+@keyframes state-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

@@ -3,6 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import { DesignPage } from './DesignPage'
 
+/** The feedback sheet's live region; the LoadingState specimen is the page's other status. */
+function feedbackSheet() {
+  const sheets = screen.getAllByRole('status').filter((el) => !el.textContent?.includes('Loading the challenge'))
+  expect(sheets).toHaveLength(1)
+  return sheets[0]
+}
+
 describe('DesignPage', () => {
   afterEach(() => {
     delete document.documentElement.dataset.theme
@@ -11,7 +18,7 @@ describe('DesignPage', () => {
   it('shows every base component', () => {
     render(<DesignPage />)
 
-    for (const name of ['Button', 'Card', 'Chip', 'ScoreBar', 'ProgressPips', 'FeedbackSheet']) {
+    for (const name of ['Button', 'Card', 'Chip', 'ScoreBar', 'ProgressPips', 'LoadingState', 'ErrorState', 'FeedbackSheet']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
     expect(screen.getAllByRole('meter').length).toBeGreaterThan(0)
@@ -40,13 +47,13 @@ describe('DesignPage', () => {
     render(<DesignPage />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Show partial feedback' }))
-    const sheet = screen.getByRole('status')
+    const sheet = feedbackSheet()
     expect(sheet).toHaveTextContent('Getting there')
 
     await userEvent.click(within(sheet).getByRole('button', { name: 'Answer follow-up' }))
-    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(feedbackSheet()).toBeEmptyDOMElement()
 
     await userEvent.click(screen.getByRole('button', { name: 'Show strong feedback' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Solid design!')
+    expect(feedbackSheet()).toHaveTextContent('Solid design!')
   })
 })

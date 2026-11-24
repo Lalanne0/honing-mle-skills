@@ -1,8 +1,11 @@
 import { useState, type ReactNode } from 'react'
+import { ApiError } from '../api/client'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Chip } from '../components/Chip'
+import { ErrorState } from '../components/ErrorState'
 import { FeedbackSheet } from '../components/FeedbackSheet'
+import { LoadingState } from '../components/LoadingState'
 import { ProgressPips } from '../components/ProgressPips'
 import { ScoreBar } from '../components/ScoreBar'
 import './design-page.css'
@@ -99,6 +102,14 @@ export function DesignPage() {
             editorial picks in the top five.
           </p>
         </Card>
+      </Specimen>
+
+      <Specimen name="LoadingState">
+        <LoadingState label="Loading the challenge…" />
+      </Specimen>
+
+      <Specimen name="ErrorState">
+        <ErrorState error={new ApiError('network', 'The server took too long to answer.')} onRetry={() => {}} />
       </Specimen>
 
       <Specimen name="FeedbackSheet">
