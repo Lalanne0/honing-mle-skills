@@ -33,6 +33,8 @@ Work is tracked in Linear: project **honing-mle-skills**, team **VIN**.
 3. Implement with **/ub-mode**: failing test first, smallest change that passes, then make it right with `make crap` (every function under CRAP 10), `make dry` (no duplication scored 0.8 or above) and `make mutate` (cover what's uncovered, kill survivors, delete dead code).
 4. UI work: follow the design patterns in VIN-14. Pull references from Mobbin when it's available and note which patterns are borrowed. Use fal for custom imagery and save it under `frontend/public/assets/` with descriptive names.
 5. Verify in the browser with **Playwright MCP**: run `make dev` (with `LLM_MODE=fake` unless a live check is wanted) and click through the flow.
-6. Run **/coderabbit:code-review**, fix the findings, and re-run until it's clean.
+6. Run **/coderabbit:code-review**, fix the findings, and re-run until it's clean. Run **at most 2 re-review rounds per PR**, local and PR reviews counted together. After the second re-review:
+   * Fix only critical and major findings.
+   * Once the PR is open (step 7), list the remaining findings in the PR description, reply to each one with the reason it isn't fixed, then resolve it.
 7. Make small commits that each say why, what changed and how it was proven. Push and open a PR.
 8. Comment on the issue with a summary and the action log, then move it to **In Review**.
