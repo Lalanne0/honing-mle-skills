@@ -85,29 +85,27 @@ If it fails, stop and report it: `/next` must not start worktrees from a stale `
 
 Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each step below may find its target already gone; that is fine, go on. Do the steps in this order.
 
-**a. Confirm the worktree belongs to this PR.** A later `/next` may have reused the path for a new issue.
+**a. Confirm the worktree belongs to this PR.** A later `/next` may have reused the path for a new issue. Read every worktree's HEAD and branch in one call:
 
 ```
-git -C ../hms-vin<N> branch --show-current
+git worktree list --porcelain
 ```
 
-If the path does not exist, go to step d. If the branch is not `<headRefName>`, the path was reused: leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and go to step d.
+Each worktree is a block of lines: `worktree <absolute path>`, `HEAD <sha>`, then `branch refs/heads/<name>` (or `detached`). Find the block whose `worktree` path ends in `/hms-vin<N>`. If there is none, the worktree is already gone (for example, a previous run removed it and then stopped): close the `hms-vin<N>` workspace if `cmux workspace list` still shows one, then go to step d. If its `branch` line is not `branch refs/heads/<headRefName>`, the path was reused: leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and go to step d.
 
-**b. Guard, then stop the worker.**
+**b. Check HEAD.** If the block's `HEAD` is not `<headRefOid>`, the worker has commits that are not in the merged branch. **Skip cleanup for this worktree**: leave the worktree, its workspace and its branch alone, report it to the user, and go to step 5.
 
-```
-git -C ../hms-vin<N> status --porcelain
-git -C ../hms-vin<N> rev-parse HEAD
-```
-
-If `status --porcelain` prints anything, or HEAD is not `<headRefOid>`, the worker has work that is not in the merged branch. **Skip cleanup for this worktree**: leave the worktree, its workspace and its branch alone, report it to the user with the status output, and go to step 5.
-
-Otherwise, find the ref of `hms-vin<N>` in `cmux workspace list` and run `cmux close-workspace --workspace <ref>`. If no workspace matches, go on.
-
-**c. Remove the worktree.**
+**c. Remove the worktree, then stop the worker.**
 
 ```
 git worktree remove ../hms-vin<N>
+```
+
+Never pass `--force`. Without it, git refuses to remove a worktree that has modified or untracked files. That refusal is the guard for uncommitted work. Ignored files (`.venv`, `node_modules`, any `backend/.env` copied in) are deleted with the worktree; they are disposable, and the main checkout keeps the real `backend/.env`. If git refuses, **skip cleanup for this worktree**: leave its workspace and its branch alone, report git's message to the user, and go to step 5.
+
+Once the worktree is removed, find the ref of `hms-vin<N>` in `cmux workspace list` and run `cmux close-workspace --workspace <ref>`. If no workspace matches, go on. Then:
+
+```
 git worktree prune
 ```
 
