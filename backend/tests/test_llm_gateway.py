@@ -218,6 +218,26 @@ def test_two_invalid_replies_raise_a_schema_error_after_exactly_two_calls() -> N
     assert "scenario_md" in str(caught.value)
 
 
+def test_the_schema_error_names_the_bad_fields_but_never_quotes_the_reply() -> None:
+    """The message reaches API responses, and a reply holds the hidden reference and rubric."""
+    bad = {
+        "scenario_md": "Design a feed ranker.",
+        "reference_md": ["Two-tower retrieval"],
+        "rubric": {"dimensions": RUBRIC_JSON["dimensions"][:2]},
+    }
+    reply = completion(json.dumps(bad))
+    gateway = Gateway(reply, reply)
+
+    with pytest.raises(LLMSchemaError) as caught:
+        gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
+
+    message = str(caught.value)
+    assert "reference_md" in message
+    assert "rubric.dimensions" in message
+    for hidden in ("Covers data.", "Covers model.", "Two-tower retrieval"):
+        assert hidden not in message
+
+
 def test_an_empty_reply_counts_as_invalid() -> None:
     gateway = Gateway(completion(None), completion(json.dumps(CHALLENGE_JSON)))
 
