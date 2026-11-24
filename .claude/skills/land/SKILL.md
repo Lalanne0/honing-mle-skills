@@ -89,13 +89,14 @@ Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each step 
 
 ```
 git -C ../hms-vin<N> branch --show-current
+git -C ../hms-vin<N> rev-parse HEAD
 ```
 
-If the path does not exist, go to step d. If the branch is not `<headRefName>`, the path was reused: leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and go to step d.
+If the path does not exist, go to step d. If the branch is not `<headRefName>`, the path was reused: leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and go to step d. If HEAD is not `<headRefOid>`, the worker already committed after the merge: stop and report it, leaving the worktree and workspace running.
 
 **b. Stop the worker.** Find the ref of `hms-vin<N>` in `cmux workspace list`, then run `cmux close-workspace --workspace <ref>`. This ends the worker's session, so it cannot commit between the check in step c and the removal. Anything it already committed stays on disk. If no workspace matches, go on.
 
-**c. Check for late commits, then remove the worktree.**
+**c. Check again for late commits, then remove the worktree.** This catches a commit made between step a and the session ending.
 
 ```
 git -C ../hms-vin<N> rev-parse HEAD
