@@ -8,20 +8,26 @@ argument-hint: <PR number>
 
 Land the one PR the user named. This skill is the only thing allowed to merge. When every gate passes it merges straight away, without asking; when any gate fails it merges nothing.
 
+**Run it from the main checkout**, the worktree that has `main` checked out (`git worktree list` shows it as `[main]`). If the current directory is somewhere else, `cd` there first. Never run /land from an `hms-vin*` worktree.
+
 ## 1. Check the gates
 
+Record the head commit first. Every gate is checked against it, and the merge is tied to it.
+
 ```
-gh pr view <n> --json number,title,state,isDraft,headRefName,mergeable,url
+gh pr view <n> --json number,title,state,isDraft,headRefName,headRefOid,mergeable,url
 gh pr checks <n> --json name,state,bucket
 ```
 
-Look for unresolved CodeRabbit review threads:
+Look for unresolved CodeRabbit review threads, reading **every** page:
 
 ```
-gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved comments(first:1){nodes{author{login}}}}}}}}' -F o=Lalanne0 -F r=honing-mle-skills -F n=<n>
+gh api graphql --paginate -f query='query($o:String!,$r:String!,$n:Int!,$endCursor:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login}}}}}}}}' -F o=Lalanne0 -F r=honing-mle-skills -F n=<n> --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select((.isResolved|not) and .comments.nodes[0].author.login=="coderabbitai")] | length'
 ```
 
-Count the unresolved threads whose first comment is by `coderabbitai`.
+This prints one count per page. Add them up.
+
+Then run `gh pr view <n> --json headRefOid` again. If the SHA changed while the gates were being checked, the results may not apply to the new head, so the PR is not ready.
 
 Print a short summary:
 
@@ -40,17 +46,20 @@ Other checks: 0 failing, 0 pending
 3. A check named `CodeRabbit` exists and its bucket is `pass`.
 4. No other check is in the `fail` or `pending` bucket. Skipped is fine.
 5. There are 0 unresolved CodeRabbit threads.
+6. The head SHA did not change while the gates were being checked.
 
 If any gate fails, say which ones and stop. Do not merge, wait, retry or override; the user runs /land again when the PR is ready.
 
 ## 2. Merge and update main
 
 ```
-gh pr merge <n> --squash --delete-branch
-git checkout main && git pull --ff-only
+gh pr merge <n> --squash --delete-branch --match-head-commit <headRefOid>
+git pull --ff-only
 ```
 
-If the merge is refused (for example by branch protection), report the error and stop.
+`--match-head-commit` makes GitHub refuse the merge if anything was pushed after the gates were checked. If the merge is refused for that or any other reason (branch protection, for example), report the error and stop.
+
+Run `git pull` in the main checkout, which is already on `main`. If `git pull --ff-only` fails, stop and report it: `/next` must not start worktrees from a stale `main`.
 
 ## 3. Clean up
 

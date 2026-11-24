@@ -45,12 +45,14 @@ For each `VIN-<N>`, from the main repo root:
 
 ```
 git worktree add --detach ../hms-vin<N> main
-cmux new-workspace --name hms-vin<N> --cwd ../hms-vin<N> --command "claude '<prompt>'"
+cmux new-workspace --name hms-vin<N> --cwd ../hms-vin<N> --command "BACKEND_PORT=<8000+N> FRONTEND_PORT=<5200+N> claude '<prompt>'"
 ```
 
-The prompt, with `<N>` filled in (keep it free of apostrophes, it sits inside single quotes):
+Each worktree gets its own ports (VIN-23 gets 8023 and 5223) so parallel workers can run `make dev` side by side. `scripts/dev.sh` and the Vite config read both variables, and the Vite `/api` proxy follows `BACKEND_PORT`.
 
-> Install dependencies for backend and frontend. Then pick up VIN-<N> and follow CLAUDE.md end to end. Do not run live tests unless the issue requires one, and if it does, ask me before running it. Stop once the PR is open and the issue is In Review. Do not merge: never run gh pr merge, only the land skill in the main checkout merges.
+The prompt, with `<N>` and the ports filled in (keep it free of apostrophes, it sits inside single quotes):
+
+> Install dependencies for backend and frontend. Then pick up VIN-<N> and follow CLAUDE.md end to end. Other issues run in parallel, so make dev must use this session ports: BACKEND_PORT=<8000+N> and FRONTEND_PORT=<5200+N> are already exported, and the browser check opens http://127.0.0.1:<5200+N>. Do not run live tests unless the issue requires one, and if it does, ask me before running it. Stop once the PR is open and the issue is In Review. Do not merge: never run gh pr merge, only the land skill in the main checkout merges.
 
 The worktree is detached on purpose: the session creates the issue branch from its `gitBranchName` as CLAUDE.md says. Do **not** move the issue to In Progress here; the session does that.
 
