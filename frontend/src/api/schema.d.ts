@@ -41,6 +41,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/challenges/{challenge_id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Answer
+         * @description Grade an answer and store it as a round. Refused before any model call when the
+         *     challenge does not await this round; nothing is stored if the model fails.
+         */
+        post: operations["submit_answer_api_challenges__challenge_id__answers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -62,6 +83,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnswerGraded */
+        AnswerGraded: {
+            round: components["schemas"]["Round"];
+            /** State */
+            state: components["schemas"]["Awaiting"] | components["schemas"]["Completed"] | components["schemas"]["Revealed"];
+        };
         /** Awaiting */
         Awaiting: {
             /**
@@ -190,6 +217,13 @@ export interface components {
             /** Dimensions */
             dimensions: components["schemas"]["Dimension"][];
         };
+        /** SubmitAnswer */
+        SubmitAnswer: {
+            /** Round */
+            round: number;
+            /** Answer Md */
+            answer_md: string;
+        };
         /**
          * Topic
          * @enum {string}
@@ -268,6 +302,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChallengeRevealed"] | components["schemas"]["ChallengePublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_answer_api_challenges__challenge_id__answers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitAnswer"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerGraded"];
                 };
             };
             /** @description Validation Error */
