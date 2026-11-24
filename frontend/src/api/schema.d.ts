@@ -62,6 +62,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/challenges/{challenge_id}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reveal Challenge
+         * @description Show the reference solution and rubric, with a comparison against the answers given.
+         *     Allowed in any state. The comparison is written once: revealing again returns the stored
+         *     one without a model call. Nothing is stored if the model fails.
+         */
+        post: operations["reveal_challenge_api_challenges__challenge_id__reveal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -133,6 +155,19 @@ export interface components {
             /** Reference Md */
             reference_md: string;
             rubric: components["schemas"]["Rubric"];
+            comparison: components["schemas"]["Comparison"];
+        };
+        /**
+         * Comparison
+         * @description Shown at reveal: the user's answers compared with the reference, noted per dimension.
+         */
+        Comparison: {
+            /** Summary Md */
+            summary_md: string;
+            /** Notes */
+            notes: {
+                [key: string]: string;
+            };
         };
         /** Complete */
         Complete: {
@@ -337,6 +372,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnswerGraded"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reveal_challenge_api_challenges__challenge_id__reveal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChallengeRevealed"];
                 };
             };
             /** @description Validation Error */
