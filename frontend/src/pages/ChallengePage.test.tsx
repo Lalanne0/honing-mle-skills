@@ -43,6 +43,28 @@ function round(n: number, verdict: unknown, answer = `answer ${n}`) {
   return { n, answer_md: answer, scores: SCORES, comment: `Comment on round ${n}.`, verdict }
 }
 const followUp = { kind: 'follow_up', question: QUESTION }
+const RUBRIC = {
+  dimensions: [
+    { key: 'requirements', name: 'Requirements', weight: 1, full_marks_criteria: 'States latency SLOs.' },
+    { key: 'architecture', name: 'Architecture', weight: 2, full_marks_criteria: 'Draws the serving path.' },
+    { key: 'trade_offs', name: 'Trade-offs', weight: 1, full_marks_criteria: 'Weighs cost against latency.' },
+  ],
+}
+const NOTES = { requirements: 'SLOs match.', architecture: 'No cache layer.', trade_offs: 'Cost ignored.' }
+
+/** The challenge as the reveal endpoint returns it. */
+function revealedFrom(
+  challenge: Omit<typeof CHALLENGE, 'state'> & { state: unknown },
+  reference = 'Use a **model cache**.',
+) {
+  return {
+    ...challenge,
+    state: { kind: 'revealed' },
+    reference_md: reference,
+    rubric: RUBRIC,
+    comparison: { summary_md: 'You covered **latency** well.', notes: NOTES },
+  }
+}
 const complete = { kind: 'complete' }
 
 type Reply = () => Promise<Response>
@@ -210,7 +232,7 @@ describe('challenge screen', () => {
   })
 
   it('reveals the reference solution once confirmed', async () => {
-    const revealed = { ...CHALLENGE, state: { kind: 'revealed' }, reference_md: 'Use a **model cache**.', rubric: {} }
+    const revealed = revealedFrom(CHALLENGE)
     const fetchMock = stubFetch(json(CHALLENGE), json(revealed))
     renderChallenge()
 
@@ -235,7 +257,7 @@ describe('challenge screen', () => {
   })
 
   it('reveals straight from the completion sheet, since there is nothing left to answer', async () => {
-    const revealed = { ...CHALLENGE, state: { kind: 'revealed' }, reference_md: 'Reference.', rubric: {} }
+    const revealed = revealedFrom({ ...CHALLENGE, rounds: [round(1, complete, 'Complete answer.')] }, 'Reference.')
     const fetchMock = stubFetch(
       json(CHALLENGE),
       json({ round: round(1, complete), state: { kind: 'completed' } }),
@@ -249,6 +271,10 @@ describe('challenge screen', () => {
 
     expect(call(fetchMock, 2).path).toBe(`/api/challenges/${ID}/reveal`)
     expect(await screen.findByRole('heading', { name: 'Reference solution' })).toBeInTheDocument()
+    const final = screen.getByRole('textbox', { name: 'Your final answer' })
+    expect(final).toHaveValue('Complete answer.')
+    expect(final).toHaveAttribute('readonly')
+    expect(sheet()).toBeEmptyDOMElement()
   })
 
   it('opens a completed challenge on its summary, with past rounds and no editor', async () => {
@@ -290,12 +316,126 @@ describe('challenge screen', () => {
   })
 
   it('opens a revealed challenge on the reference solution', async () => {
-    stubFetch(json({ ...CHALLENGE, state: { kind: 'revealed' }, reference_md: 'Reference text.', rubric: {} }))
+    stubFetch(json(revealedFrom(CHALLENGE, 'Reference text.')))
     renderChallenge()
 
     expect(await screen.findByRole('heading', { name: 'Reference solution' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reveal solution' })).not.toBeInTheDocument()
     // Revealed before any answer: no round was graded, so there is no progress to show.
     expect(screen.queryByRole('img', { name: /round/i })).not.toBeInTheDocument()
+  })
+
+  it('reveals mid-challenge: last answer read-only beside the reference, with the comparison and rubric', async () => {
+    const midway = { ...CHALLENGE, state: { kind: 'awaiting', round: 2 }, rounds: [round(1, followUp, 'Round one answer.')] }
+    stubFetch(json(midway), json(revealedFrom(midway)))
+    renderChallenge()
+    await userEvent.type(await editor(), 'Unsent draft')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal solution' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal' }))
+
+    const final = await screen.findByRole('textbox', { name: 'Your final answer' })
+    expect(final).toHaveValue('Round one answer.')
+    expect(final).toHaveAttribute('readonly')
+    expect(screen.getByText('Round 1 of 3, the last one graded.')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Your answer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Submit answer/ })).not.toBeInTheDocument()
+    expect(screen.getByText('model cache').tagName).toBe('STRONG')
+    // The challenge takes no more answers, so the unsent draft is dropped.
+    expect(localStorage.length).toBe(0)
+
+    const comparison = screen.getByRole('region', { name: 'Comparison' })
+    expect(within(comparison).getByText('latency').tagName).toBe('STRONG')
+    const rows = within(comparison).getAllByRole('row').slice(1)
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Requirements'),
+      expect.stringContaining('Architecture'),
+      expect.stringContaining('Trade-offs'),
+    ])
+    expect(rows[1]).toHaveTextContent('50%')
+    expect(rows[1]).toHaveTextContent('Draws the serving path.')
+    expect(rows[1]).toHaveTextContent('No cache layer.')
+    expect(within(rows[1]).getByRole('meter', { name: 'Architecture' })).toHaveAttribute('aria-valuenow', '3')
+  })
+
+  it('makes New challenge the primary action once revealed', async () => {
+    stubFetch(json(revealedFrom(CHALLENGE)))
+    renderChallenge()
+
+    const link = await screen.findByRole('link', { name: 'New challenge' })
+    expect(link).toHaveAttribute('data-variant', 'primary')
+    expect(link).toHaveAttribute('href', '/')
+  })
+
+  it('keeps New challenge secondary while answering', async () => {
+    stubFetch(json(CHALLENGE))
+    renderChallenge()
+
+    expect(await screen.findByRole('link', { name: 'New challenge' })).toHaveAttribute('data-variant', 'secondary')
+  })
+
+  it('switches between your answer and the reference with tabs on narrow screens', async () => {
+    stubFetch(json(revealedFrom({ ...CHALLENGE, state: { kind: 'completed' }, rounds: [round(1, complete)] })))
+    renderChallenge()
+
+    const answerTab = await screen.findByRole('tab', { name: 'Your answer' })
+    const referenceTab = screen.getByRole('tab', { name: 'Reference solution' })
+    expect(answerTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Your answer' })).toHaveAttribute('data-active', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Reference solution' })).toHaveAttribute('data-active', 'false')
+
+    await userEvent.click(referenceTab)
+
+    expect(referenceTab).toHaveAttribute('aria-selected', 'true')
+    expect(answerTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel', { name: 'Reference solution' })).toHaveAttribute('data-active', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Your answer' })).toHaveAttribute('data-active', 'false')
+  })
+
+  it('moves between the tabs with the arrow keys, with one tab stop', async () => {
+    stubFetch(json(revealedFrom({ ...CHALLENGE, state: { kind: 'completed' }, rounds: [round(1, complete)] })))
+    renderChallenge()
+    const answerTab = await screen.findByRole('tab', { name: 'Your answer' })
+    const referenceTab = screen.getByRole('tab', { name: 'Reference solution' })
+    expect(answerTab).toHaveAttribute('tabindex', '0')
+    expect(referenceTab).toHaveAttribute('tabindex', '-1')
+
+    act(() => answerTab.focus())
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect(referenceTab).toHaveFocus()
+    expect(referenceTab).toHaveAttribute('aria-selected', 'true')
+    expect(referenceTab).toHaveAttribute('tabindex', '0')
+    expect(answerTab).toHaveAttribute('tabindex', '-1')
+
+    await userEvent.keyboard('{ArrowRight}')
+    expect(answerTab).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(referenceTab).toHaveFocus()
+    await userEvent.keyboard('{Home}')
+    expect(answerTab).toHaveFocus()
+    await userEvent.keyboard('{End}')
+    expect(referenceTab).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    expect(referenceTab).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('says which round the rubric scores come from', async () => {
+    const rounds = [round(1, followUp), round(2, complete)]
+    stubFetch(json(revealedFrom({ ...CHALLENGE, state: { kind: 'completed' }, rounds })))
+    renderChallenge()
+
+    expect(await screen.findByRole('table', { name: 'Rubric, scored on round 2, the last one graded' })).toBeInTheDocument()
+  })
+
+  it('says there is nothing to compare when revealed before answering', async () => {
+    stubFetch(json(revealedFrom(CHALLENGE)))
+    renderChallenge()
+
+    expect(await screen.findByText('You revealed the solution before answering.')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Your final answer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Not graded')).toHaveLength(3)
+    expect(screen.getByRole('table', { name: 'Rubric' })).toBeInTheDocument()
   })
 })
