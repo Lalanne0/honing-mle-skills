@@ -1,6 +1,6 @@
 export type Round = 1 | 2 | 3
 
-const MAX_ROUNDS = 3
+export const MAX_ROUNDS = 3
 const ROUNDS: Round[] = [1, 2, 3]
 
 type PipState = 'graded' | 'current' | 'upcoming'

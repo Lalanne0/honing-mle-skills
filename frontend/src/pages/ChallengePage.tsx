@@ -14,6 +14,7 @@ import { Markdown } from '../components/Markdown'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { ProgressPips, type Round as PipRound } from '../components/ProgressPips'
 import { ScoreBar, type Score } from '../components/ScoreBar'
+import { RevealView } from './RevealView'
 import './challenge-page.css'
 
 type Challenge = ChallengePublic | ChallengeRevealed
@@ -47,7 +48,12 @@ function ChallengeView({ initial }: { initial: Challenge }) {
   const [challenge, setChallenge] = useState<Challenge>(initial)
   const [graded, setGraded] = useState<Round | null>(null)
   const [confirming, setConfirming] = useState(false)
-  const reveal = useAction((_: void, signal) => api.revealChallenge(challenge.id, signal), setChallenge)
+  // A revealed challenge takes no more answers, so an unsent draft has nowhere to go.
+  const onRevealed = (revealed: ChallengeRevealed) => {
+    if (challenge.state.kind === 'awaiting') clearDraft(challenge.id, challenge.state.round)
+    setChallenge(revealed)
+  }
+  const reveal = useAction((_: void, signal) => api.revealChallenge(challenge.id, signal), onRevealed)
 
   const onGraded = ({ round, state }: AnswerGraded) => {
     setChallenge((current) => ({ ...current, rounds: [...current.rounds, round], state }))
@@ -80,39 +86,45 @@ function ChallengeView({ initial }: { initial: Challenge }) {
               Reveal solution
             </Button>
           )}
-          <Link to="/" className="btn" data-variant="secondary">
+          {/* Once revealed there is nothing left to do here, so starting over becomes the main action. */}
+          <Link to="/" className="btn" data-variant={isRevealed(challenge) ? 'primary' : 'secondary'}>
             New challenge
           </Link>
         </div>
       </header>
       {confirming && <RevealConfirm onConfirm={confirmReveal} onCancel={() => setConfirming(false)} />}
       <ActionStatusView state={reveal.state} running="Revealing the solution…" onRetry={() => reveal.run()} />
-      <div className="challenge__split">
-        <section className="challenge__brief" aria-label="Scenario">
-          <h2 className="challenge__heading">Scenario</h2>
-          <Markdown>{challenge.scenario_md}</Markdown>
-          <PastRounds rounds={challenge.rounds} />
-        </section>
-        <section className="challenge__work" aria-label="Your work">
-          <Workspace challenge={challenge} onGraded={onGraded} onSeeReference={seeReference} />
-        </section>
-      </div>
+      {isRevealed(challenge) ? (
+        <>
+          <RevealView challenge={challenge} />
+          <Brief challenge={challenge} />
+        </>
+      ) : (
+        <div className="challenge__split">
+          <Brief challenge={challenge} />
+          <section className="challenge__work" aria-label="Your work">
+            <Workspace challenge={challenge} onGraded={onGraded} onSeeReference={seeReference} />
+          </section>
+        </div>
+      )}
       <GradeSheet round={graded} onFollowUp={() => setGraded(null)} onSeeReference={seeReference} />
     </article>
+  )
+}
+
+function Brief({ challenge }: { challenge: Challenge }) {
+  return (
+    <section className="challenge__brief" aria-label="Scenario">
+      <h2 className="challenge__heading">Scenario</h2>
+      <Markdown>{challenge.scenario_md}</Markdown>
+      <PastRounds rounds={challenge.rounds} />
+    </section>
   )
 }
 
 type WorkspaceProps = { challenge: Challenge; onGraded: (result: AnswerGraded) => void; onSeeReference: () => void }
 
 function Workspace({ challenge, onGraded, onSeeReference }: WorkspaceProps) {
-  if (isRevealed(challenge)) {
-    return (
-      <div className="panel">
-        <h2 className="challenge__heading">Reference solution</h2>
-        <Markdown>{challenge.reference_md}</Markdown>
-      </div>
-    )
-  }
   if (challenge.state.kind !== 'awaiting') {
     return (
       <div className="panel">

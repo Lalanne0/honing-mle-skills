@@ -18,8 +18,22 @@ describe('comparisonRows', () => {
     const rounds = [round(1, { requirements: 1, trade_offs: 1 }), round(2, { requirements: 4, trade_offs: 2 })]
 
     expect(comparisonRows(RUBRIC, NOTES, rounds)).toEqual([
-      { key: 'requirements', name: 'Requirements', weightPercent: 25, criteria: 'States SLOs.', score: 4, note: 'Clear SLOs.' },
-      { key: 'trade_offs', name: 'Trade-offs', weightPercent: 75, criteria: 'Weighs cost and latency.', score: 2, note: 'Missed cost.' },
+      {
+        key: 'requirements',
+        name: 'Requirements',
+        weightPercent: 25,
+        criteria: 'States SLOs.',
+        score: 4,
+        note: 'Clear SLOs.',
+      },
+      {
+        key: 'trade_offs',
+        name: 'Trade-offs',
+        weightPercent: 75,
+        criteria: 'Weighs cost and latency.',
+        score: 2,
+        note: 'Missed cost.',
+      },
     ])
   })
 
@@ -28,7 +42,8 @@ describe('comparisonRows', () => {
   })
 
   it('rounds weight shares to whole percents', () => {
-    const thirds = { dimensions: RUBRIC.dimensions.map((d) => ({ ...d, weight: 1 })).concat({ ...RUBRIC.dimensions[0], key: 'x', weight: 1 }) }
+    const dimension = (key: string) => ({ key, name: key, weight: 1, full_marks_criteria: '' })
+    const thirds = { dimensions: [dimension('a'), dimension('b'), dimension('c')] }
 
     expect(comparisonRows(thirds, NOTES, []).map((row) => row.weightPercent)).toEqual([33, 33, 33])
   })
