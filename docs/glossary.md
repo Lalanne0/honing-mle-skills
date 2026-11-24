@@ -1,6 +1,6 @@
 # Glossary
 
-Use these terms the same way in code, UI and issues. Code names are in `backend/app/domain.py`, except `Challenge` and `Round`, which are in `backend/app/challenge.py`.
+Use these terms the same way in code, UI and issues. Code names are in `backend/app/domain.py`, except `Challenge` and `Round`, which are in `backend/app/challenge.py`, and `GradeResult` and `Comparison`, which are in `backend/app/llm/schemas.py`.
 
 | Term | Code | Meaning |
 |---|---|---|
@@ -16,7 +16,7 @@ Use these terms the same way in code, UI and issues. Code names are in `backend/
 | **Follow-up** | `FollowUp` | A verdict asking the user one more question. In the last round it completes the challenge instead. |
 | **Reveal** | `RevealRequested`, `Revealed` | Showing the reference solution and rubric to the user. Allowed from any state. Once revealed, the challenge takes no more answers. `Revealed` is final. |
 | **Reference solution** | — | The model answer to a challenge. Like the rubric, it never leaves the backend before reveal. |
-| **Comparison** | `Comparison` | Shown at reveal: the user's answers side by side with the reference solution, with a summary and one note per rubric dimension. |
+| **Comparison** | `Comparison` | Shown at reveal: the user's answers side by side with the reference solution, with a summary and one note per rubric dimension. Written once, at the first reveal, and stored with the challenge. When nothing was answered it says there is no answer to compare, without a model call. |
 
 ## Challenge states
 

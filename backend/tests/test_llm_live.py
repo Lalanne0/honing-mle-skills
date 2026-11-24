@@ -15,6 +15,7 @@ from app.domain import Level, Topic
 from app.llm.factory import make_llm
 from app.llm.fake import FakeLLM
 from app.llm.gateway import OpenAICompatibleLLM
+from app.llm.prompts import PastRound
 from app.settings import load_settings
 
 
@@ -51,3 +52,18 @@ def test_grade_through_the_gateway(caplog: pytest.LogCaptureFixture) -> None:
     )
 
     run_live(caplog, lambda llm: llm.grade(challenge, [], answer))
+
+
+@pytest.mark.live
+def test_compare_through_the_gateway(caplog: pytest.LogCaptureFixture) -> None:
+    """Compares one fixed, fake-graded round with a fixed challenge, so only the compare
+    call is paid for."""
+    fake = FakeLLM()
+    challenge = fake.generate(Level.MID, Topic.MODEL_SERVING)
+    answer = (
+        "Serve the model behind a stateless HTTP service on autoscaled GPU nodes, "
+        "with dynamic batching and canary rollouts."
+    )
+    rounds = [PastRound(answer=answer, grade=fake.grade(challenge, [], answer))]
+
+    run_live(caplog, lambda llm: llm.compare(challenge, rounds))
