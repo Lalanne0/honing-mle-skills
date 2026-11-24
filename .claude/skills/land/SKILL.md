@@ -83,41 +83,49 @@ If it fails, stop and report it: `/next` must not start worktrees from a stale `
 
 ## 4. Clean up
 
-Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each command below may find its target already gone; that is fine, go on.
+Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each step below may find its target already gone; that is fine, go on. Do the steps in this order.
 
-First confirm the worktree belongs to this PR. A later `/next` may have reused the path for a new issue:
+**a. Confirm the worktree belongs to this PR.** A later `/next` may have reused the path for a new issue.
 
 ```
 git -C ../hms-vin<N> branch --show-current
+```
+
+If the path does not exist, go to step d. If the branch is not `<headRefName>`, the path was reused: leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and go to step d.
+
+**b. Stop the worker.** Find the ref of `hms-vin<N>` in `cmux workspace list`, then run `cmux close-workspace --workspace <ref>`. This ends the worker's session, so it cannot commit between the check in step c and the removal. Anything it already committed stays on disk. If no workspace matches, go on.
+
+**c. Check for late commits, then remove the worktree.**
+
+```
 git -C ../hms-vin<N> rev-parse HEAD
 ```
 
-- If the branch is not `<headRefName>`, the path was reused. Leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and skip to the branch deletion.
-- If the branch matches but HEAD is not `<headRefOid>`, the worker committed after the merge. Stop and report it, removing nothing, so that work is not lost.
-- If the path does not exist, go on.
+If HEAD is not `<headRefOid>`, the worker committed after the merge. Stop and report it, and remove nothing: the commits are still in the worktree. Otherwise:
 
 ```
 git worktree remove ../hms-vin<N>
 git worktree prune
+```
+
+If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`.
+
+**d. Delete the local branch.**
+
+```
 git worktree list --porcelain
 git update-ref -d refs/heads/<headRefName> <headRefOid>
 ```
 
-Before `update-ref`, check that no line of `git worktree list --porcelain` reads `branch refs/heads/<headRefName>`. If one does, another worktree still has the branch checked out: stop and report it rather than leave that worktree with a missing branch.
+If any line of `git worktree list --porcelain` reads `branch refs/heads/<headRefName>`, another worktree still has the branch checked out. Stop and report it rather than leave that worktree with a missing branch. `update-ref -d` with the recorded SHA deletes the branch only if it still points at the merged commit. If it fails because the tip moved, stop and report it, so those commits are not lost.
 
-If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`. Do not delete the branch until the worktree is gone.
-
-`git update-ref -d` with the recorded SHA deletes the local branch only if it still points at the merged commit. If it fails because the tip moved, the worker committed after the merge: stop and report it, so those commits are not lost.
-
-Remote branch: `git ls-remote --heads origin <headRefName>`. It should be gone, because GitHub deleted it on merge. If it is still there, that setting is off. Delete it only if it still points at the merged commit, then tell the user the setting is off:
+**e. Check the remote branch.** Run `git ls-remote --heads origin <headRefName>`. It should be gone, because GitHub deleted it on merge. If it is still there, that setting is off. Delete it only if it still points at the merged commit, then tell the user the setting is off:
 
 ```
 git push --force-with-lease=refs/heads/<headRefName>:<headRefOid> origin :refs/heads/<headRefName>
 ```
 
 This command is deliberately not on the allowlist, so it asks first. If the lease fails, the branch moved: stop and report it.
-
-Close the workspace, unless the branch check above found a conflict: find the ref of `hms-vin<N>` in `cmux workspace list`, then `cmux close-workspace --workspace <ref>`. If none matches, say so and go on.
 
 ## 5. Tell the other sessions
 
