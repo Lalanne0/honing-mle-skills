@@ -75,7 +75,7 @@ def test_challenges_are_created_and_read_back_through_the_real_wiring() -> None:
 def test_app_db_path_puts_the_database_where_it_says(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    throwaway = tmp_path / "e2e" / "throwaway.db"
+    throwaway = tmp_path / "e2e" / "nested" / "throwaway.db"
     monkeypatch.setenv("APP_DB_PATH", str(throwaway))
 
     with TestClient(fastapi_app) as client:
