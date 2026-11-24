@@ -17,7 +17,9 @@ from app.domain import (
     State,
     Topic,
     Verdict,
+    WrongRoundError,
     advance,
+    check_answer,
 )
 
 FOLLOW_UP = Graded(verdict=FollowUp(question="How would you handle cold start?"))
@@ -174,3 +176,27 @@ def test_no_answers_after_completed_or_revealed(state: State, event: Graded) -> 
 )
 def test_revealed_is_reachable_from_every_state(state: State) -> None:
     assert advance(state, REVEAL) == Revealed()
+
+
+# --- which answers are accepted --------------------------------------------------
+
+
+@pytest.mark.parametrize("round_number", range(1, MAX_ROUNDS + 1))
+def test_an_answer_for_the_awaited_round_is_accepted(round_number: int) -> None:
+    check_answer(Awaiting(round=round_number), round_number)
+
+
+@pytest.mark.parametrize(("awaited", "given"), [(2, 1), (1, 2), (3, 2)])
+def test_an_answer_for_another_round_is_refused(awaited: int, given: int) -> None:
+    with pytest.raises(WrongRoundError, match=f"round {awaited}.*got {given}"):
+        check_answer(Awaiting(round=awaited), given)
+
+
+@pytest.mark.parametrize("state", [Completed(), Revealed()])
+def test_no_answer_is_accepted_after_completed_or_revealed(state: State) -> None:
+    with pytest.raises(IllegalTransitionError, match=state.kind):
+        check_answer(state, 1)
+
+
+def test_a_wrong_round_is_an_illegal_transition() -> None:
+    assert issubclass(WrongRoundError, IllegalTransitionError)
