@@ -6,9 +6,16 @@ Each model's `model_json_schema()` is sent as the `response_format` json_schema
 rubric fails validation like any other malformed reply.
 """
 
-from typing import ClassVar, Self
+from typing import Annotated, ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict, ValidationInfo, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    WrapValidator,
+    model_validator,
+)
 
 from app.domain import NonBlank, Rubric, Score, Verdict
 
@@ -55,3 +62,13 @@ class Comparison(_RubricBound):
     notes: dict[str, NonBlank]
 
     _keyed_field = "notes"
+
+
+def _against_sibling_rubric(
+    value: object, _: ValidatorFunctionWrapHandler, info: ValidationInfo
+) -> Comparison:
+    return Comparison.model_validate(value, context={"rubric": info.data.get("rubric")})
+
+
+ComparisonOfRubric = Annotated[Comparison, WrapValidator(_against_sibling_rubric)]
+"""A `Comparison` field checked against the `rubric` field declared before it in the same model."""

@@ -5,12 +5,13 @@ Terms are defined in docs/glossary.md. The rules for moving between states live 
 """
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID, uuid4
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
-from app.domain import MAX_ROUNDS, Level, NonBlank, Rubric, Score, State, Topic, Verdict
+from app.domain import MAX_ROUNDS, Level, NonBlank, Revealed, Rubric, Score, State, Topic, Verdict
+from app.llm.schemas import ComparisonOfRubric
 
 
 class _Value(BaseModel):
@@ -39,3 +40,11 @@ class Challenge(_Value):
     rubric: Rubric
     state: State
     rounds: tuple[Round, ...] = ()
+    comparison: ComparisonOfRubric | None = None
+    """Written once, at reveal. Present exactly when the challenge is revealed."""
+
+    @model_validator(mode="after")
+    def _comparison_iff_revealed(self) -> Self:
+        if isinstance(self.state, Revealed) != (self.comparison is not None):
+            raise ValueError("a challenge has a comparison exactly when it is revealed")
+        return self

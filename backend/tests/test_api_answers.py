@@ -85,8 +85,13 @@ def answer(h: Harness, challenge_id: str, round_: int, answer_md: str = "My desi
 
 def store_in_state(h: Harness, state: State) -> str:
     generated = FakeLLM().generate(Level.MID, Topic.MODEL_SERVING)
+    comparison = FakeLLM().compare(generated, []) if isinstance(state, Revealed) else None
     challenge = Challenge(
-        level=Level.MID, topic=Topic.MODEL_SERVING, state=state, **generated.model_dump()
+        level=Level.MID,
+        topic=Topic.MODEL_SERVING,
+        state=state,
+        comparison=comparison,
+        **generated.model_dump(),
     )
     h.repository.create(challenge)
     return str(challenge.id)
