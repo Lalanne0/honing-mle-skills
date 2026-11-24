@@ -167,23 +167,30 @@ describe('history page', () => {
   })
 
   it('shows an empty state on first use, pointing to Practice', async () => {
-    const fetchMock = stubBackend({ stats: [] })
+    stubBackend({ stats: [], history: () => [] })
     const router = renderHistory()
 
     expect(await screen.findByRole('heading', { name: 'No challenges yet' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Focus next' })).not.toBeInTheDocument()
-    expect(historyCalls(fetchMock)).toEqual([])
+    expect(screen.queryByRole('region', { name: 'Past challenges' })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('link', { name: 'Start your first challenge' }))
     expect(router.state.location.pathname).toBe('/')
   })
 
-  it('shows an error with a retry when the stats fail to load', async () => {
-    stubBackend({ stats: { detail: 'Database is locked.' }, status: 500 })
+  it('shows an error with a retry when the stats fail, and still lists past challenges', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const stats = String(input) === '/api/stats'
+      const body = stats ? { detail: 'Database is locked.' } : [SUMMARY]
+      return Promise.resolve(new Response(JSON.stringify(body), { status: stats ? 500 : 200 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
     renderHistory()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Database is locked.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    const list = await screen.findByRole('list', { name: 'Past challenges' })
+    expect(within(list).getAllByRole('link')).toHaveLength(1)
   })
 
   it('keeps the stats on screen when only the history fails, and retries it', async () => {

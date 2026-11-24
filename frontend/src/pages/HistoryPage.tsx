@@ -28,31 +28,37 @@ const DATE = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
 /** Past challenges and where you are weak: the Focus next card, a bar per topic, and the filterable history. */
 export function HistoryPage() {
-  const { state, retry } = useApi('stats', (signal) => api.getStats(signal))
-
   return (
     <section className="history">
       <h1>History</h1>
-      {state.status === 'loading' && <LoadingState label="Loading your stats…" />}
-      {state.status === 'error' && <ErrorState error={state.error} onRetry={retry} />}
-      {state.status === 'ok' && <Overview stats={state.data} />}
+      <HistoryBody />
     </section>
   )
 }
 
-/** Stats list every attempted topic, so no stats means no challenge yet. */
-function Overview({ stats }: { stats: TopicStats[] }) {
-  if (stats.length === 0) return <FirstUse />
+function HistoryBody() {
+  const { state, retry } = useApi('stats', (signal) => api.getStats(signal))
+  // Stats list every attempted topic, so no stats means no challenge yet.
+  if (state.status === 'ok' && state.data.length === 0) return <FirstUse />
+  // The history loads on its own, so it still shows when only the stats fail.
   return (
     <>
-      <div className="history__overview">
-        <FocusNext stats={stats} />
-        <Card title="By topic">
-          <TopicBars rows={topicRows(stats)} />
-        </Card>
-      </div>
+      {state.status === 'loading' && <LoadingState label="Loading your stats…" />}
+      {state.status === 'error' && <ErrorState error={state.error} onRetry={retry} />}
+      {state.status === 'ok' && <Overview stats={state.data} />}
       <PastChallenges />
     </>
+  )
+}
+
+function Overview({ stats }: { stats: TopicStats[] }) {
+  return (
+    <div className="history__overview">
+      <FocusNext stats={stats} />
+      <Card title="By topic">
+        <TopicBars rows={topicRows(stats)} />
+      </Card>
+    </div>
   )
 }
 
