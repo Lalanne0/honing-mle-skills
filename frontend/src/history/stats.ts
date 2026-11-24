@@ -21,9 +21,10 @@ export type Focus = { topic: Topic; averageScore: number; dimensions: DimensionS
 
 /** The weakest topic with a graded round, and its weakest dimensions. Null before anything is graded. */
 export function focusNext(stats: readonly TopicStats[]): Focus | null {
-  const weakest = stats.find((s) => s.average_score !== null)
-  if (!weakest || weakest.average_score === null) return null
-  return { topic: weakest.topic, averageScore: weakest.average_score, dimensions: weakest.weakest_dimensions }
+  for (const { topic, average_score, weakest_dimensions } of stats) {
+    if (average_score !== null) return { topic, averageScore: average_score, dimensions: weakest_dimensions }
+  }
+  return null
 }
 
 const FINISHED_LABELS = { completed: 'Completed', revealed: 'Revealed' } as const

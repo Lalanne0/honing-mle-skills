@@ -185,4 +185,23 @@ describe('history page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Database is locked.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
+
+  it('keeps the stats on screen when only the history fails, and retries it', async () => {
+    let fail = true
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const stats = String(input) === '/api/stats'
+      const failing = !stats && fail
+      const body = stats ? STATS : failing ? { detail: 'Database is locked.' } : [SUMMARY]
+      return Promise.resolve(new Response(JSON.stringify(body), { status: failing ? 500 : 200 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderHistory()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Database is locked.')
+    expect(screen.getByRole('region', { name: 'Focus next' })).toBeInTheDocument()
+
+    fail = false
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('list', { name: 'Past challenges' })).toBeInTheDocument()
+  })
 })
