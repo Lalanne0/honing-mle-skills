@@ -7,14 +7,14 @@ type FeedbackSheetProps = {
   headline: string
   actionLabel: string
   onAction: () => void
-  children: ReactNode
+  children?: ReactNode
 }
 
 export function FeedbackSheet({ open, tone, headline, actionLabel, onAction, children }: FeedbackSheetProps) {
   // The live region stays mounted while closed so screen readers announce it when it fills.
-  if (!open) return <div role="status" />
+  if (!open) return <div role="status" aria-label="Feedback" />
   return (
-    <div className="sheet" role="status" data-tone={tone}>
+    <div className="sheet" role="status" aria-label="Feedback" data-tone={tone}>
       <div className="sheet__inner">
         <p className="sheet__headline">{headline}</p>
         <div className="sheet__body">{children}</div>

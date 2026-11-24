@@ -5,7 +5,8 @@ export type Score = 0 | 1 | 2 | 3 | 4 | 5
 const MAX_SCORE = 5
 const SEGMENTS = Array.from({ length: MAX_SCORE }, (_, i) => i)
 
-type ScoreBarProps = { name: string; score: Score; comment: string }
+/** `comment` is optional: a grade has one comment for the whole answer, not one per dimension. */
+type ScoreBarProps = { name: string; score: Score; comment?: string }
 
 export function ScoreBar({ name, score, comment }: ScoreBarProps) {
   const nameId = useId()
@@ -29,7 +30,7 @@ export function ScoreBar({ name, score, comment }: ScoreBarProps) {
           <span key={i} className="score__segment" data-filled={i < score} />
         ))}
       </div>
-      <span className="score__comment">{comment}</span>
+      {comment && <span className="score__comment">{comment}</span>}
     </div>
   )
 }

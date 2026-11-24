@@ -156,6 +156,7 @@
 }
 .sheet__body {
   color: var(--fg);
+  justify-self: stretch;
 }
 
 @keyframes sheet-up {
@@ -218,5 +219,11 @@
   50% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
   }
 }
