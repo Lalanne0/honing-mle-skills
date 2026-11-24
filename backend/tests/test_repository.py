@@ -216,6 +216,18 @@ def test_revealing_again_keeps_the_first_comparison(repo: ChallengeRepository) -
     assert repo.get(created.id).comparison == comparison("First.")
 
 
+def test_revealing_an_already_revealed_challenge_returns_it_unchanged(
+    repo: ChallengeRepository,
+) -> None:
+    created = challenge()
+    repo.create(created)
+    first = repo.reveal(created, comparison("First."))
+
+    again = repo.reveal(first, comparison("Second."))
+
+    assert again == first
+
+
 def test_revealing_an_unknown_challenge_raises(repo: ChallengeRepository) -> None:
     with pytest.raises(ChallengeNotFoundError):
         repo.reveal(challenge(), comparison())

@@ -75,7 +75,10 @@ class ChallengeRepository:
         answer was stored since `challenge` was read, since the comparison would miss it.
         """
         with Session(self._engine) as session:
-            if _set_state(session, challenge.id, challenge.state, Revealed()):
+            already_revealed = challenge.comparison is not None
+            if not already_revealed and _set_state(
+                session, challenge.id, challenge.state, Revealed()
+            ):
                 session.add(_comparison_row(challenge.id, comparison))
                 session.commit()
         stored = self.get(challenge.id)
