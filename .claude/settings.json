@@ -21,8 +21,13 @@
       "Bash(cmux read-screen:*)",
       "Bash(cmux send --workspace:*)",
       "Bash(cmux send-key --workspace:*)",
+      "Bash(cmux identify)",
+      "Bash(cmux notify --title hms-loop --body:*)",
       "mcp__linear-server__list_issues",
-      "mcp__linear-server__get_issue"
+      "mcp__linear-server__get_issue",
+      "mcp__linear-server__list_comments",
+      "mcp__linear-server__save_comment",
+      "mcp__linear-server__save_issue"
     ]
   }
 }
