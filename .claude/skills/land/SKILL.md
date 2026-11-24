@@ -15,12 +15,18 @@ Every step after the merge can safely run twice. So if a step after the merge fa
 ## 1. Check the gates
 
 ```
-gh pr view <n> --json number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,url
+gh pr view <n> --json number,title,state,isDraft,baseRefName,headRefName,headRefOid,isCrossRepository,mergeable,url
 ```
 
-If `state` is **MERGED**, this is a resume. Say so, skip the gates and the merge, and go to step 3. If it is CLOSED, stop.
+Record `headRefOid`. Every gate is checked against it, the merge is tied to it, and cleanup only deletes a branch that still points at it. A merged PR keeps the `headRefOid` it was merged at, so a resume reads the same value.
 
-Record `headRefOid`. Every gate is checked against it, and the merge is tied to it.
+First, two checks that apply on every run, including a resume:
+- `baseRefName` must be `main`, and `isCrossRepository` must be false. Fork PRs are refused: cleanup derives worktree and branch names from `headRefName`, which a fork could set to collide with a running worker. If either check fails, stop.
+
+Then look at `state`:
+- **MERGED**: this is a resume. Say so, skip the gates and the merge, and go to step 3.
+- **CLOSED**: stop.
+- **OPEN**: check the gates below.
 
 ```
 gh pr checks <n> --json name,state,bucket
@@ -48,7 +54,7 @@ Other checks: none failing, pending or cancelled
 
 **The gates.** All of them must hold:
 
-1. `state` is OPEN, `isDraft` is false, `baseRefName` is `main`, and `mergeable` is MERGEABLE. If it is UNKNOWN, GitHub is still computing it, so the PR is not ready.
+1. `state` is OPEN, `isDraft` is false, and `mergeable` is MERGEABLE. If it is UNKNOWN, GitHub is still computing it, so the PR is not ready.
 2. A check named `lint-and-test` **exists** and its bucket is `pass`. If it is missing, the PR is **not ready**. A missing check never counts as passed.
 3. A check named `CodeRabbit` exists and its bucket is `pass`.
 4. Every other check is in the `pass` or `skipping` bucket. A check in `fail`, `pending` or `cancel` fails this gate.
@@ -63,7 +69,7 @@ If any gate fails, say which ones and stop. Do not merge, wait, retry or overrid
 gh pr merge <n> --squash --match-head-commit <headRefOid>
 ```
 
-`--match-head-commit` makes GitHub refuse the merge if anything was pushed after the gates were checked. Branches are deleted in step 4, not here, because `--delete-branch` fails while the branch is still checked out in the worker's worktree. If the merge is refused (a new push, branch protection, anything else), report the error and stop.
+`--match-head-commit` makes GitHub refuse the merge if anything was pushed after the gates were checked. Do not pass `--delete-branch`: it fails while the branch is still checked out in the worker's worktree. GitHub deletes the remote branch itself on merge (the repository's "Automatically delete head branches" setting), and step 4 deletes the local one. If the merge is refused (a new push, branch protection, anything else), report the error and stop.
 
 ## 3. Update main
 
@@ -82,11 +88,20 @@ Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each comma
 ```
 git worktree remove ../hms-vin<N>
 git worktree prune
-git branch -D <headRefName>
-git push origin --delete <headRefName>
+git update-ref -d refs/heads/<headRefName> <headRefOid>
 ```
 
-If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`. Do not delete the branch until the worktree is gone. `-D` is needed because a squash merge is not an ancestor of the branch; it is safe here because the PR is merged.
+If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`. Do not delete the branch until the worktree is gone.
+
+`git update-ref -d` with the recorded SHA deletes the local branch only if it still points at the merged commit. If it fails because the tip moved, the worker committed after the merge: stop and report it, so those commits are not lost.
+
+Remote branch: `git ls-remote --heads origin <headRefName>`. It should be gone, because GitHub deleted it on merge. If it is still there, that setting is off. Delete it only if it still points at the merged commit, then tell the user the setting is off:
+
+```
+git push --force-with-lease=refs/heads/<headRefName>:<headRefOid> origin :refs/heads/<headRefName>
+```
+
+This command is deliberately not on the allowlist, so it asks first. If the lease fails, the branch moved: stop and report it.
 
 Close the workspace: find the ref of `hms-vin<N>` in `cmux workspace list`, then `cmux close-workspace --workspace <ref>`. If none matches, say so and go on.
 
