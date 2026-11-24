@@ -26,4 +26,10 @@ describe('ScoreBar', () => {
     const segments = screen.getByRole('meter').querySelectorAll('[data-filled]')
     expect([...segments].map((s) => s.getAttribute('data-filled'))).toEqual(['true', 'true', 'true', 'false', 'false'])
   })
+
+  it('leaves the comment out when there is none', () => {
+    const { container } = render(<ScoreBar name="Data" score={3} />)
+
+    expect(container.querySelector('.score__comment')).toBeNull()
+  })
 })

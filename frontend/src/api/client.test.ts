@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, request } from './client'
+import { ApiError, DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, api, request } from './client'
 
 function json(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' }, ...init })
@@ -236,5 +236,40 @@ describe('api', () => {
 
     expect(fetchMock.mock.calls[0][0]).toBe('/api/challenges/a%2Fb')
     expect(fetchMock.mock.calls[0][1]?.method).toBe('GET')
+  })
+
+  it('posts an answer for a round to the challenge', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json({ round: {}, state: { kind: 'completed' } })))
+
+    await api.submitAnswer('a/b', { round: 2, answer_md: 'Shard it.' })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/challenges/a%2Fb/answers')
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
+    expect(fetchMock.mock.calls[0][1]?.body).toBe('{"round":2,"answer_md":"Shard it."}')
+  })
+
+  it('reveals a challenge with a bodyless POST', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json({ id: 'a/b' })))
+
+    await api.revealChallenge('a/b')
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/challenges/a%2Fb/reveal')
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
+    expect(fetchMock.mock.calls[0][1]?.body).toBeUndefined()
+  })
+
+  it.each([
+    ['grading', () => api.submitAnswer('1', { round: 1, answer_md: 'x' })],
+    ['revealing', () => api.revealChallenge('1')],
+  ])('waits on the model past the plain deadline when %s', async (_, send) => {
+    vi.useFakeTimers()
+    const fetchMock = stubFetch(hangingFetch)
+
+    const pending = failure(send())
+    await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT_MS + 1)
+    expect(fetchMock.mock.calls[0][1]?.signal?.aborted).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(MODEL_TIMEOUT_MS)
+    expect((await pending).kind).toBe('network')
   })
 })

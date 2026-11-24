@@ -13,6 +13,9 @@ export type ChallengeRevealed = Schemas['ChallengeRevealed']
 export type CreateChallenge = Schemas['CreateChallenge']
 export type Level = Schemas['Level']
 export type Topic = Schemas['Topic']
+export type Round = Schemas['Round']
+export type AnswerGraded = Schemas['AnswerGraded']
+export type SubmitAnswer = Schemas['SubmitAnswer']
 
 export type ApiErrorKind = 'network' | 'not_found' | 'conflict' | 'invalid' | 'model_failed' | 'busy' | 'server'
 
@@ -129,4 +132,18 @@ export const api = {
     request<ChallengePublic>('/api/challenges', { method: 'POST', body, timeoutMs: MODEL_TIMEOUT_MS, signal }),
   getChallenge: (id: string, signal?: AbortSignal) =>
     request<ChallengePublic | ChallengeRevealed>(`/api/challenges/${encodeURIComponent(id)}`, { method: 'GET', signal }),
+  submitAnswer: (id: string, body: SubmitAnswer, signal?: AbortSignal) =>
+    request<AnswerGraded>(`/api/challenges/${encodeURIComponent(id)}/answers`, {
+      method: 'POST',
+      body,
+      timeoutMs: MODEL_TIMEOUT_MS,
+      signal,
+    }),
+  /** Writes the comparison on the first reveal, so it waits on the model. */
+  revealChallenge: (id: string, signal?: AbortSignal) =>
+    request<ChallengeRevealed>(`/api/challenges/${encodeURIComponent(id)}/reveal`, {
+      method: 'POST',
+      timeoutMs: MODEL_TIMEOUT_MS,
+      signal,
+    }),
 }
