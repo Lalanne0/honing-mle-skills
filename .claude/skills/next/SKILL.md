@@ -83,7 +83,7 @@ No `--command`: a long command typed before the shell is ready gets stuck. Recor
 
 ### c. Wait for the shell
 
-Poll `cmux read-screen --workspace <ref>` once a second, for up to 30 seconds, until the last non-empty line is a shell prompt (it ends with `%`, `$`, `#`, `❯` or `>`). A `Last login:` line alone is not ready. If no prompt shows, report it and go on with the others.
+Poll `cmux read-screen --workspace <ref>` once a second, for up to 30 seconds, until the last non-empty line is a shell prompt (it ends with `%`, `$`, `#`, `❯` or `>`). A `Last login:` line alone is not ready. If no prompt shows, the launch failed: go to step f.
 
 ### d. Launch Claude
 
@@ -99,8 +99,19 @@ The ctrl+c clears anything half-typed, so the same three commands also relaunch 
 
 Poll `cmux read-screen --workspace <ref>` once a second, for up to 20 seconds:
 - `esc to interrupt` or `for shortcuts` on screen: the worker is running.
-- A "trust this folder" (or "Do you trust the files") dialog: **do not answer it.** Run `cmux notify --title hms-loop --body "hms-vin<N>: trust dialog waiting"` and report it as `your answer in hms-vin<N>`.
-- Neither: report `launch failed in hms-vin<N>` with the last screen lines.
+- A "trust this folder" (or "Do you trust the files") dialog: **do not answer it.** Run `cmux notify --title hms-loop --body "hms-vin<N>: trust dialog waiting"` and report it as `your answer in hms-vin<N>`. Leave the worktree and workspace: the issue holds its slot until you answer, and the worker then starts on its own.
+- Neither: the launch failed. Go to step f.
+
+### f. Clean up a failed launch
+
+A failed launch must not leave its worktree behind: step 3 would count it as in flight and step 4 would skip the issue because the worktree exists, so the loop could never retry it. Save the last screen lines for the report, then:
+
+```
+cmux close-workspace --workspace <ref> --force
+git worktree remove ../hms-vin<N>
+```
+
+`--force` on the workspace is safe here: no worker is running in it. Never pass `--force` to `git worktree remove`; the prompt file is ignored, so a clean worktree is removed without it. If git refuses, leave the worktree and report git's message, so the user can clean it up. The issue stays Todo, so the next `/next` launches it again. Report `launch failed in hms-vin<N>, cleaned up, retried by the next /next` with the saved screen lines, and go on with the others.
 
 The worktree is detached on purpose: the session creates the issue branch from its `gitBranchName` as CLAUDE.md says. Do **not** move the issue to In Progress here; the session does that.
 
