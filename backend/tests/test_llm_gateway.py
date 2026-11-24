@@ -210,6 +210,14 @@ def test_a_reply_that_breaks_the_rubric_is_retried() -> None:
     assert "missing ['serving']" in note
 
 
+def test_the_retry_note_says_when_the_whole_reply_is_wrong() -> None:
+    gateway = Gateway(completion("not json"), completion(json.dumps(CHALLENGE_JSON)))
+
+    gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
+
+    assert "\n- reply: Invalid JSON" in gateway.requests[1]["messages"][2]["content"]
+
+
 def test_the_retry_note_names_missing_keys_of_an_empty_dict() -> None:
     """The live compare call came back with `notes: {}`."""
     empty = {**COMPARISON_JSON, "notes": {}}
@@ -390,7 +398,8 @@ def test_status_errors_carry_the_gateway_message_without_the_key() -> None:
     [
         ({"error": "plain error string"}, "plain error string"),
         ({"detail": "no error field"}, "no error field"),
-        ({"error": {"message": "x" * 2000}}, "x" * 500 + "…"),
+        ({"error": {"message": "x" * 500}}, "x" * 500),
+        ({"error": {"message": "x" * 501}}, "x" * 500 + "…"),
     ],
 )
 def test_the_gateway_message_is_found_in_any_error_body_and_truncated(
