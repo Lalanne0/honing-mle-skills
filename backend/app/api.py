@@ -25,6 +25,7 @@ from app.domain import (
 from app.llm.errors import LLMError, LLMRateLimitedError
 from app.llm.port import LLMPort
 from app.repository import ChallengeNotFoundError, ChallengeRepository, DuplicateRoundError
+from app.revealing import compare
 from app.views import ChallengePublic, ChallengeRevealed, view
 
 DEFAULT_RETRY_AFTER_SECONDS = 30
@@ -113,6 +114,17 @@ def submit_answer(
     round_, state = graded_round(challenge.state, body.round, body.answer_md, grade)
     repository.add_round(challenge_id, round_, state)
     return AnswerGraded(round=round_, state=state)
+
+
+@router.post("/{challenge_id}/reveal")
+def reveal_challenge(challenge_id: UUID, llm: Llm, repository: Repository) -> ChallengeRevealed:
+    """Show the reference solution and rubric, with a comparison against the answers given.
+    Allowed in any state. The comparison is written once: revealing again returns the stored
+    one without a model call. Nothing is stored if the model fails."""
+    challenge = repository.get(challenge_id)
+    if challenge.comparison is None:
+        challenge = repository.reveal(challenge_id, compare(llm, challenge))
+    return ChallengeRevealed.model_validate(challenge)
 
 
 # --- errors ----------------------------------------------------------------------
