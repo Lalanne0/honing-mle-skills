@@ -185,9 +185,11 @@
   font: 700 var(--text-md) / 1.2 var(--font-display);
 }
 .row__scenario {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .row__meta {
   font: var(--text-xs) / 1.2 var(--font-ui);
@@ -209,6 +211,10 @@
   justify-self: end;
   font: 800 var(--text-xl) / 1 var(--font-display);
   font-variant-numeric: tabular-nums;
+}
+.row__out-of {
+  font: 600 var(--text-xs) / 1 var(--font-ui);
+  color: var(--muted);
 }
 .row__score[data-scored='false'] {
   font: var(--text-xs) / 1.2 var(--font-ui);
@@ -243,4 +249,9 @@
     grid-row: 1;
     grid-column: 2;
   }
+}
+
+.history__empty .btn {
+  text-decoration: none;
+  display: inline-block;
 }

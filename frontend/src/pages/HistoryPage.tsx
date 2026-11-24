@@ -245,7 +245,14 @@ function HistoryRow({ challenge }: { challenge: ChallengeSummary }) {
         {stateLabel(challenge.state)}
       </span>
       <span className="row__score" data-scored={challenge.score !== null}>
-        {challenge.score === null ? 'No score' : points(challenge.score)}
+        {challenge.score === null ? (
+          'No score'
+        ) : (
+          <>
+            {points(challenge.score)}
+            <span className="row__out-of">/100</span>
+          </>
+        )}
       </span>
     </Link>
   )

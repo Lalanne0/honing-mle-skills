@@ -119,7 +119,7 @@ describe('history page', () => {
     expect(rows[0]).toHaveAccessibleName(/Feature stores/)
     expect(within(rows[0]).getByText('Food delivery')).toBeInTheDocument()
     expect(within(rows[0]).getByText('Completed')).toBeInTheDocument()
-    expect(within(rows[0]).getByText('42')).toBeInTheDocument()
+    expect(rows[0]).toHaveAccessibleName(/42\/100$/)
     expect(within(rows[1]).getByText('Round 1 of 3')).toBeInTheDocument()
     expect(within(rows[1]).getByText('No score')).toBeInTheDocument()
 
