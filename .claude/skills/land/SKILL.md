@@ -10,12 +10,19 @@ Land the one PR the user named. This skill is the only thing allowed to merge. W
 
 **Run it from the main checkout**, the worktree that has `main` checked out (`git worktree list` shows it as `[main]`). If the current directory is somewhere else, `cd` there first. Never run /land from an `hms-vin*` worktree.
 
+Every step after the merge can safely run twice. So if a step after the merge fails, fix the cause and run `/land <n>` again; it resumes after the merge (see step 1).
+
 ## 1. Check the gates
 
-Record the head commit first. Every gate is checked against it, and the merge is tied to it.
+```
+gh pr view <n> --json number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,url
+```
+
+If `state` is **MERGED**, this is a resume. Say so, skip the gates and the merge, and go to step 3. If it is CLOSED, stop.
+
+Record `headRefOid`. Every gate is checked against it, and the merge is tied to it.
 
 ```
-gh pr view <n> --json number,title,state,isDraft,headRefName,headRefOid,mergeable,url
 gh pr checks <n> --json name,state,bucket
 ```
 
@@ -33,48 +40,57 @@ Print a short summary:
 
 ```
 PR #<n>  <title>
-State: OPEN, mergeable: MERGEABLE
+State: OPEN, base: main, mergeable: MERGEABLE
 CI (lint-and-test): pass
 CodeRabbit: pass, 0 unresolved threads
-Other checks: 0 failing, 0 pending
+Other checks: none failing, pending or cancelled
 ```
 
 **The gates.** All of them must hold:
 
-1. `state` is OPEN, `isDraft` is false, and `mergeable` is MERGEABLE. If it is UNKNOWN, GitHub is still computing it, so the PR is not ready.
+1. `state` is OPEN, `isDraft` is false, `baseRefName` is `main`, and `mergeable` is MERGEABLE. If it is UNKNOWN, GitHub is still computing it, so the PR is not ready.
 2. A check named `lint-and-test` **exists** and its bucket is `pass`. If it is missing, the PR is **not ready**. A missing check never counts as passed.
 3. A check named `CodeRabbit` exists and its bucket is `pass`.
-4. No other check is in the `fail` or `pending` bucket. Skipped is fine.
+4. Every other check is in the `pass` or `skipping` bucket. A check in `fail`, `pending` or `cancel` fails this gate.
 5. There are 0 unresolved CodeRabbit threads.
 6. The head SHA did not change while the gates were being checked.
 
 If any gate fails, say which ones and stop. Do not merge, wait, retry or override; the user runs /land again when the PR is ready.
 
-## 2. Merge and update main
+## 2. Merge
 
 ```
-gh pr merge <n> --squash --delete-branch --match-head-commit <headRefOid>
+gh pr merge <n> --squash --match-head-commit <headRefOid>
+```
+
+`--match-head-commit` makes GitHub refuse the merge if anything was pushed after the gates were checked. Branches are deleted in step 4, not here, because `--delete-branch` fails while the branch is still checked out in the worker's worktree. If the merge is refused (a new push, branch protection, anything else), report the error and stop.
+
+## 3. Update main
+
+In the main checkout, which is already on `main`:
+
+```
 git pull --ff-only
 ```
 
-`--match-head-commit` makes GitHub refuse the merge if anything was pushed after the gates were checked. If the merge is refused for that or any other reason (branch protection, for example), report the error and stop.
+If it fails, stop and report it: `/next` must not start worktrees from a stale `main`. Once the user has fixed it (usually by committing or stashing local changes), `/land <n>` resumes here.
 
-Run `git pull` in the main checkout, which is already on `main`. If `git pull --ff-only` fails, stop and report it: `/next` must not start worktrees from a stale `main`.
+## 4. Clean up
 
-## 3. Clean up
-
-Find the issue number from the head branch (`vlalanne0/vin-<N>-...`).
+Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each command below may find its target already gone; that is fine, go on.
 
 ```
 git worktree remove ../hms-vin<N>
 git worktree prune
+git branch -D <headRefName>
+git push origin --delete <headRefName>
 ```
 
-If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`.
+If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`. Do not delete the branch until the worktree is gone. `-D` is needed because a squash merge is not an ancestor of the branch; it is safe here because the PR is merged.
 
 Close the workspace: find the ref of `hms-vin<N>` in `cmux workspace list`, then `cmux close-workspace --workspace <ref>`. If none matches, say so and go on.
 
-## 4. Tell the other sessions
+## 5. Tell the other sessions
 
 For every other workspace in `cmux workspace list` whose name starts with `hms-vin`:
 
@@ -85,6 +101,6 @@ cmux send-key --workspace <ref> Enter
 
 If `cmux send` fails because the session has a question or dialog open, do not use `--force`. List that workspace in the report so the user can pass the message on.
 
-## 5. Next batch
+## 6. Next batch
 
 Report what was merged, what was cleaned up and which workspaces were notified. Then run the `/next` skill.
