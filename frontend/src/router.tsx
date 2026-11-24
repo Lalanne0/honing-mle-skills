@@ -2,21 +2,14 @@ import { Link, type RouteObject } from 'react-router'
 import { DesignPage } from './design/DesignPage'
 import { ChallengePage } from './pages/ChallengePage'
 import { IntroPage } from './pages/IntroPage'
+import { StartPage } from './pages/StartPage'
 import { AppShell } from './shell/AppShell'
 
 export const routes: RouteObject[] = [
   {
     element: <AppShell />,
     children: [
-      {
-        // Placeholder until the start screen (VIN-16) picks a level and topic here.
-        path: '/',
-        element: (
-          <IntroPage title="Practice">
-            Pick a level and a topic, then answer an ML system-design challenge in up to three rounds.
-          </IntroPage>
-        ),
-      },
+      { path: '/', element: <StartPage /> },
       { path: '/c/:id', element: <ChallengePage /> },
       {
         // Placeholder until the history and stats page (VIN-19) lists past challenges here.

@@ -47,7 +47,8 @@ export function useApi<T>(key: string, load: (signal: AbortSignal) => Promise<T>
   return { state, retry }
 }
 
-function asApiError(error: unknown): ApiError {
+/** Any failure as an `ApiError`, so the UI has one error type to show. */
+export function asApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error
   return new ApiError('server', error instanceof Error ? error.message : String(error))
 }
