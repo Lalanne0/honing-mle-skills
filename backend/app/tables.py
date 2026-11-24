@@ -33,3 +33,14 @@ class RoundRow(SQLModel, table=True):
     scores: JsonDict = Field(sa_column=Column(JSON, nullable=False))
     comment: str
     verdict: JsonDict = Field(sa_column=Column(JSON, nullable=False))
+
+
+class ComparisonRow(SQLModel, table=True):
+    """Written once, when the challenge is revealed. Its own table, so an existing database
+    gains it on the next start without a migration."""
+
+    __tablename__ = "comparison"
+
+    challenge_id: str = Field(foreign_key="challenge.id", primary_key=True)
+    summary_md: str
+    notes: JsonDict = Field(sa_column=Column(JSON, nullable=False))

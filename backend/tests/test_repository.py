@@ -13,12 +13,14 @@ from app.domain import (
     Completed,
     Dimension,
     FollowUp,
+    IllegalTransitionError,
     Level,
     Revealed,
     Rubric,
     State,
     Topic,
 )
+from app.llm.schemas import Comparison
 from app.repository import ChallengeNotFoundError, ChallengeRepository, DuplicateRoundError
 
 RUBRIC = Rubric(
@@ -28,6 +30,13 @@ RUBRIC = Rubric(
     )
 )
 T0 = datetime(2026, 11, 23, 12, 0, tzinfo=UTC)
+
+
+def comparison(summary: str = "Close to the reference.") -> Comparison:
+    return Comparison.model_validate(
+        {"summary_md": summary, "notes": {d.key: f"Note on {d.key}." for d in RUBRIC.dimensions}},
+        context={"rubric": RUBRIC},
+    )
 
 
 def challenge(
@@ -46,6 +55,7 @@ def challenge(
         rubric=RUBRIC,
         state=state or Awaiting(round=1),
         rounds=rounds,
+        comparison=comparison() if isinstance(state, Revealed) else None,
     )
 
 
@@ -165,6 +175,51 @@ def test_the_same_round_number_is_allowed_in_different_challenges(
     repo.add_round(second.id, round_(1), Awaiting(round=2))
 
     assert len(repo.get(second.id).rounds) == 1
+
+
+def test_a_round_is_refused_once_the_challenge_no_longer_takes_answers(
+    repo: ChallengeRepository,
+) -> None:
+    """A reveal stored while an answer was being graded wins: the late round is not stored."""
+    created = challenge()
+    repo.create(created)
+    revealed = repo.reveal(created.id, comparison())
+
+    with pytest.raises(IllegalTransitionError):
+        repo.add_round(created.id, round_(1), Awaiting(round=2))
+
+    assert repo.get(created.id) == revealed
+
+
+# --- reveal --------------------------------------------------------------------------
+
+
+def test_revealing_stores_the_comparison_with_the_revealed_state(
+    repo: ChallengeRepository,
+) -> None:
+    created = challenge(state=Awaiting(round=2), rounds=(round_(1),))
+    repo.create(created)
+
+    revealed = repo.reveal(created.id, comparison())
+
+    assert revealed == created.model_copy(update={"state": Revealed(), "comparison": comparison()})
+    assert repo.get(created.id) == revealed
+
+
+def test_revealing_again_keeps_the_first_comparison(repo: ChallengeRepository) -> None:
+    created = challenge()
+    repo.create(created)
+    first = repo.reveal(created.id, comparison("First."))
+
+    again = repo.reveal(created.id, comparison("Second."))
+
+    assert again == first
+    assert repo.get(created.id).comparison == comparison("First.")
+
+
+def test_revealing_an_unknown_challenge_raises(repo: ChallengeRepository) -> None:
+    with pytest.raises(ChallengeNotFoundError):
+        repo.reveal(uuid4(), comparison())
 
 
 # --- list ----------------------------------------------------------------------------

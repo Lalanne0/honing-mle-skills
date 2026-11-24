@@ -12,7 +12,8 @@ from app.llm.fake import RUBRIC, FakeLLM
 from app.main import app
 from app.repository import ChallengeRepository
 
-FAKE_REFERENCE = FakeLLM().generate(Level.MID, Topic.MODEL_SERVING).reference_md
+FAKE_CHALLENGE = FakeLLM().generate(Level.MID, Topic.MODEL_SERVING)
+FAKE_REFERENCE = FAKE_CHALLENGE.reference_md
 HIDDEN_TEXT = [FAKE_REFERENCE, *(d.full_marks_criteria for d in RUBRIC.dimensions)]
 
 

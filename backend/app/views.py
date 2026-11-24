@@ -2,7 +2,8 @@
 
 `ChallengePublic` is all the user may see before reveal: it has no field for the
 reference solution or the rubric, so neither can leak by accident.
-`ChallengeRevealed` adds both, and is sent only once the challenge is revealed.
+`ChallengeRevealed` adds both and the comparison, and is sent only once the challenge
+is revealed.
 """
 
 from uuid import UUID
@@ -11,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.challenge import Challenge, Round
 from app.domain import Level, Revealed, Rubric, State, Topic
+from app.llm.schemas import ComparisonOfRubric
 
 
 class ChallengePublic(BaseModel):
@@ -27,6 +29,7 @@ class ChallengePublic(BaseModel):
 class ChallengeRevealed(ChallengePublic):
     reference_md: str
     rubric: Rubric
+    comparison: ComparisonOfRubric
 
 
 def view(challenge: Challenge) -> ChallengePublic | ChallengeRevealed:

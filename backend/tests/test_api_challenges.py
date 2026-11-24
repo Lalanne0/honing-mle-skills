@@ -139,7 +139,11 @@ def test_get_with_a_malformed_id_returns_422(h: Harness) -> None:
 def test_get_revealed_challenge_includes_reference_and_rubric(h: Harness) -> None:
     generated = FakeLLM().generate(Level.MID, Topic.DATA_PIPELINES)
     revealed = Challenge(
-        level=Level.MID, topic=Topic.DATA_PIPELINES, state=Revealed(), **generated.model_dump()
+        level=Level.MID,
+        topic=Topic.DATA_PIPELINES,
+        state=Revealed(),
+        comparison=FakeLLM().compare(generated, []),
+        **generated.model_dump(),
     )
     h.repository.create(revealed)
 
@@ -148,6 +152,7 @@ def test_get_revealed_challenge_includes_reference_and_rubric(h: Harness) -> Non
     assert body["state"] == {"kind": "revealed"}
     assert body["reference_md"] == FAKE_REFERENCE
     assert body["rubric"] == json.loads(RUBRIC.model_dump_json())
+    assert body["comparison"]["summary_md"] == "Fake comparison of 0 rounds."
 
 
 # --- leak ------------------------------------------------------------------------
