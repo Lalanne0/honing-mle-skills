@@ -1,64 +1,106 @@
-import '@testing-library/jest-dom/vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
-import { StrictMode } from 'react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import App from './App'
+import { routes } from './router'
 
-function stubFetch(response: Promise<Response>) {
-  vi.stubGlobal('fetch', vi.fn(() => response))
+const CHALLENGE = {
+  id: '6f1c2b1e-0000-4000-8000-000000000001',
+  level: 'senior',
+  topic: 'recommender_systems',
+  scenario_md: 'Design the home feed for a news app with 40M daily users.',
+  state: { kind: 'awaiting', round: 1 },
+  rounds: [],
 }
 
-describe('App', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
+function renderAt(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
+  render(<RouterProvider router={router} />)
+  return router
+}
+
+function stubFetch(...replies: Array<() => Promise<Response>>) {
+  const fetchMock = vi.fn()
+  for (const reply of replies) fetchMock.mockImplementationOnce(reply)
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+const json = (body: unknown, status = 200) => () => Promise.resolve(new Response(JSON.stringify(body), { status }))
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('app shell', () => {
+  it('opens on Practice, with the header and navigation', () => {
+    renderAt('/')
+
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(within(nav).getByRole('link', { name: 'Practice' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'honing-mle-skills home' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('heading', { level: 1, name: 'Practice' })).toBeInTheDocument()
   })
 
-  it('shows the backend as up when the health check answers ok', async () => {
-    stubFetch(Promise.resolve(new Response(JSON.stringify({ status: 'ok' }))))
+  it('navigates to History and back to Practice', async () => {
+    renderAt('/')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
 
-    render(<App />)
+    await userEvent.click(within(nav).getByRole('link', { name: 'History' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'History' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'History' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: 'Practice' })).not.toHaveAttribute('aria-current')
 
-    expect(await screen.findByText('Backend: ok')).toBeInTheDocument()
+    await userEvent.click(within(nav).getByRole('link', { name: 'Practice' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Practice' })).toBeInTheDocument()
   })
 
-  it('shows the backend as unreachable when the request fails', async () => {
-    stubFetch(Promise.reject(new TypeError('network down')))
+  it('shows a not-found page for an unknown path, inside the shell', () => {
+    renderAt('/nope')
 
-    render(<App />)
-
-    expect(await screen.findByText('Backend: unreachable')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 
-  it('shows the backend as unreachable on an error status even if the body says ok', async () => {
-    stubFetch(Promise.resolve(new Response(JSON.stringify({ status: 'ok' }), { status: 503 })))
+  it('serves the design demo on /design, outside the shell', () => {
+    renderAt('/design')
 
-    render(<App />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Field Notes' })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument()
+  })
+})
 
-    expect(await screen.findByText('Backend: unreachable')).toBeInTheDocument()
+describe('challenge page', () => {
+  it('loads the challenge, then shows its topic, level and scenario', async () => {
+    const fetchMock = stubFetch(json(CHALLENGE))
+
+    renderAt(`/c/${CHALLENGE.id}`)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading the challenge…')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Recommender systems' })).toBeInTheDocument()
+    expect(screen.getByText('Senior')).toBeInTheDocument()
+    expect(screen.getByText(CHALLENGE.scenario_md)).toBeInTheDocument()
+    expect(fetchMock.mock.calls[0][0]).toBe(`/api/challenges/${CHALLENGE.id}`)
   })
 
-  it('ignores a late failure from an abandoned StrictMode effect run', async () => {
-    let rejectFirst: (reason: unknown) => void = () => {}
-    const first = new Promise<Response>((_, reject) => {
-      rejectFirst = reject
-    })
-    const second = Promise.resolve(new Response(JSON.stringify({ status: 'ok' })))
-    vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second))
+  it('shows the error state when the backend fails, and retries', async () => {
+    stubFetch(json({ detail: `No challenge ${CHALLENGE.id}` }, 404), json(CHALLENGE))
 
-    render(
-      <StrictMode>
-        <App />
-      </StrictMode>,
-    )
-    expect(await screen.findByText('Backend: ok')).toBeInTheDocument()
+    renderAt(`/c/${CHALLENGE.id}`)
 
-    expect(fetch).toHaveBeenCalledTimes(2)
-    await act(async () => {
-      rejectFirst(new TypeError('network down'))
-      await new Promise((resolve) => setTimeout(resolve, 0))
-    })
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Nothing here')
+    expect(alert).toHaveTextContent(`No challenge ${CHALLENGE.id}`)
 
-    expect(screen.getByText('Backend: ok')).toBeInTheDocument()
+    await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Recommender systems' })).toBeInTheDocument()
+  })
+
+  it('shows the same error state when the server cannot be reached', async () => {
+    stubFetch(() => Promise.reject(new TypeError('Failed to fetch')))
+
+    renderAt(`/c/${CHALLENGE.id}`)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("Can't reach the server")
   })
 })
