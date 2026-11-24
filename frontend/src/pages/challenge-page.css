@@ -1,0 +1,325 @@
+/* Challenge screen (VIN-17): scenario left, editor right, feedback sheet below.
+   Every colour comes from tokens.css. */
+
+.challenge {
+  display: grid;
+  gap: var(--space-5);
+  /* Room under the content so the fixed feedback sheet never hides the submit button. */
+  padding-bottom: var(--space-7);
+}
+
+.challenge__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-5);
+}
+.challenge__title {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.challenge__title h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+}
+.challenge__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.challenge__actions .btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
+.challenge__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.challenge__brief,
+.challenge__work {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: var(--space-5);
+  min-width: 0;
+}
+/* The scenario scrolls on its own so it stays beside the editor on long answers. */
+.challenge__brief {
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100dvh - var(--space-6));
+  overflow-y: auto;
+}
+
+.challenge__heading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.prose {
+  font: var(--text-md) / 1.6 var(--font-body);
+  max-width: var(--measure);
+  overflow-wrap: anywhere;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+.prose strong {
+  color: var(--accent-deep);
+}
+.prose code {
+  font: 0.9em var(--font-mono);
+  background: var(--track);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.prose pre {
+  background: var(--track);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+.prose pre code {
+  padding: 0;
+}
+
+/* --- answering ------------------------------------------------------------- */
+
+.answer {
+  display: grid;
+  gap: var(--space-3);
+}
+.answer__question {
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+.answer__question p {
+  margin: 0;
+  font: var(--text-md) / 1.5 var(--font-body);
+}
+.answer__question .challenge__heading {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-md);
+  color: var(--accent-deep);
+}
+
+.answer__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.answer__modes {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--track);
+  border-radius: var(--radius-pill);
+}
+.answer__mode {
+  font: 600 var(--text-sm) / 1 var(--font-ui);
+  padding: 7px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.answer__mode[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+}
+.answer__count {
+  font: var(--text-xs) var(--font-mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor,
+.answer__preview {
+  min-height: 320px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.answer__preview {
+  padding: var(--space-3) var(--space-4);
+}
+.editor:focus-within {
+  border-color: var(--accent);
+}
+.editor .cm-editor {
+  min-height: 320px;
+  max-height: 70dvh;
+  background: transparent;
+  color: var(--fg);
+  font: var(--text-md) / 1.6 var(--font-mono);
+}
+.editor .cm-editor.cm-focused {
+  outline: none;
+}
+.editor .cm-scroller {
+  font-family: inherit;
+}
+.editor .cm-content {
+  padding: var(--space-3) var(--space-2);
+  caret-color: var(--accent);
+}
+.editor .cm-cursor {
+  border-left-color: var(--accent);
+}
+.editor .cm-selectionBackground,
+.editor .cm-focused .cm-selectionBackground {
+  background: var(--accent-soft);
+}
+
+.answer__submit {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- reveal confirmation --------------------------------------------------- */
+
+.confirm {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-4) var(--space-5);
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+  border-radius: var(--radius-lg);
+}
+.confirm__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--warn);
+}
+.confirm__text {
+  margin: 0;
+}
+.confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* --- grades ---------------------------------------------------------------- */
+
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+.panel > p {
+  margin: 0;
+}
+
+.feedback {
+  display: grid;
+  gap: var(--space-3);
+}
+.scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+.feedback__comment {
+  margin: 0;
+  font: var(--text-md) / 1.5 var(--font-body);
+}
+.feedback__question p {
+  margin: 0;
+  font: var(--text-md) / 1.5 var(--font-body);
+}
+.feedback__question .feedback__label {
+  font: 600 var(--text-xs) / 1.2 var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+.past {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.past__round {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.past__round summary {
+  font: 600 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+}
+.past__round[open] > * + * {
+  margin-top: var(--space-3);
+}
+
+/* A checkmark that draws itself on Complete. */
+.celebrate__mark {
+  width: 56px;
+  height: 56px;
+}
+.celebrate__ring {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 3;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: celebrate-draw 500ms ease-out forwards;
+}
+.celebrate__check {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: celebrate-draw 300ms 400ms ease-out forwards;
+}
+@keyframes celebrate-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebrate__ring,
+  .celebrate__check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .challenge__split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .challenge__brief {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .challenge__brief,
+  .challenge__work {
+    padding: var(--space-4);
+  }
+  .answer__submit .btn {
+    width: 100%;
+  }
+}
