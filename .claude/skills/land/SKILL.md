@@ -85,11 +85,22 @@ If it fails, stop and report it: `/next` must not start worktrees from a stale `
 
 Find the issue number from the head branch (`vlalanne0/vin-<N>-...`). Each command below may find its target already gone; that is fine, go on.
 
+First confirm the worktree belongs to this PR. A later `/next` may have reused the path for a new issue:
+
+```
+git -C ../hms-vin<N> branch --show-current
+```
+
+If it prints something other than `<headRefName>`, leave that worktree **and** its `hms-vin<N>` workspace alone, report the conflict, and skip to the branch deletion. If the path does not exist, go on.
+
 ```
 git worktree remove ../hms-vin<N>
 git worktree prune
+git worktree list --porcelain
 git update-ref -d refs/heads/<headRefName> <headRefOid>
 ```
+
+Before `update-ref`, check that no line of `git worktree list --porcelain` reads `branch refs/heads/<headRefName>`. If one does, another worktree still has the branch checked out: stop and report it rather than leave that worktree with a missing branch.
 
 If `git worktree remove` refuses because of local changes, show `git -C ../hms-vin<N> status --short` and ask the user before using `--force`. Do not delete the branch until the worktree is gone.
 
@@ -103,7 +114,7 @@ git push --force-with-lease=refs/heads/<headRefName>:<headRefOid> origin :refs/h
 
 This command is deliberately not on the allowlist, so it asks first. If the lease fails, the branch moved: stop and report it.
 
-Close the workspace: find the ref of `hms-vin<N>` in `cmux workspace list`, then `cmux close-workspace --workspace <ref>`. If none matches, say so and go on.
+Close the workspace, unless the branch check above found a conflict: find the ref of `hms-vin<N>` in `cmux workspace list`, then `cmux close-workspace --workspace <ref>`. If none matches, say so and go on.
 
 ## 5. Tell the other sessions
 
