@@ -392,6 +392,42 @@ describe('challenge screen', () => {
     expect(screen.getByRole('tabpanel', { name: 'Your answer' })).toHaveAttribute('data-active', 'false')
   })
 
+  it('moves between the tabs with the arrow keys, with one tab stop', async () => {
+    stubFetch(json(revealedFrom({ ...CHALLENGE, state: { kind: 'completed' }, rounds: [round(1, complete)] })))
+    renderChallenge()
+    const answerTab = await screen.findByRole('tab', { name: 'Your answer' })
+    const referenceTab = screen.getByRole('tab', { name: 'Reference solution' })
+    expect(answerTab).toHaveAttribute('tabindex', '0')
+    expect(referenceTab).toHaveAttribute('tabindex', '-1')
+
+    act(() => answerTab.focus())
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect(referenceTab).toHaveFocus()
+    expect(referenceTab).toHaveAttribute('aria-selected', 'true')
+    expect(referenceTab).toHaveAttribute('tabindex', '0')
+    expect(answerTab).toHaveAttribute('tabindex', '-1')
+
+    await userEvent.keyboard('{ArrowRight}')
+    expect(answerTab).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(referenceTab).toHaveFocus()
+    await userEvent.keyboard('{Home}')
+    expect(answerTab).toHaveFocus()
+    await userEvent.keyboard('{End}')
+    expect(referenceTab).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    expect(referenceTab).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('says which round the rubric scores come from', async () => {
+    const rounds = [round(1, followUp), round(2, complete)]
+    stubFetch(json(revealedFrom({ ...CHALLENGE, state: { kind: 'completed' }, rounds })))
+    renderChallenge()
+
+    expect(await screen.findByRole('table', { name: 'Rubric, scored on round 2, the last one graded' })).toBeInTheDocument()
+  })
+
   it('says there is nothing to compare when revealed before answering', async () => {
     stubFetch(json(revealedFrom(CHALLENGE)))
     renderChallenge()
@@ -400,5 +436,6 @@ describe('challenge screen', () => {
     expect(screen.queryByRole('textbox', { name: 'Your final answer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     expect(screen.getAllByText('Not graded')).toHaveLength(3)
+    expect(screen.getByRole('table', { name: 'Rubric' })).toBeInTheDocument()
   })
 })
