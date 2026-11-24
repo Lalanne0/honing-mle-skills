@@ -92,13 +92,13 @@ def _log_usage(completion: ChatCompletion, call: str, attempt: int) -> None:
 
 
 def _error_summary(error: ValidationError) -> str:
-    """Where and why validation failed, without the rejected values.
+    """Where validation failed and Pydantic's fixed error type, e.g. `rubric.dimensions: too_short`.
 
-    The values are the model's reply, which holds the hidden reference solution
-    and rubric, and this summary can reach an API response.
+    Never the messages or inputs: they can quote the model's reply, which holds the
+    hidden reference solution and rubric, and this summary can reach an API response.
     """
     return "; ".join(
-        f"{'.'.join(map(str, e['loc'])) or 'reply'}: {e['msg']}" for e in error.errors()
+        f"{'.'.join(map(str, e['loc'])) or 'reply'}: {e['type']}" for e in error.errors()
     )
 
 

@@ -223,7 +223,7 @@ def test_the_schema_error_names_the_bad_fields_but_never_quotes_the_reply() -> N
     bad = {
         "scenario_md": "Design a feed ranker.",
         "reference_md": ["Two-tower retrieval"],
-        "rubric": {"dimensions": RUBRIC_JSON["dimensions"][:2]},
+        "rubric": {"dimensions": [*RUBRIC_JSON["dimensions"][:2], RUBRIC_JSON["dimensions"][0]]},
     }
     reply = completion(json.dumps(bad))
     gateway = Gateway(reply, reply)
@@ -234,7 +234,7 @@ def test_the_schema_error_names_the_bad_fields_but_never_quotes_the_reply() -> N
     message = str(caught.value)
     assert "reference_md" in message
     assert "rubric.dimensions" in message
-    for hidden in ("Covers data.", "Covers model.", "Two-tower retrieval"):
+    for hidden in ("Covers data.", "Covers model.", "Two-tower retrieval", "'data'"):
         assert hidden not in message
 
 
