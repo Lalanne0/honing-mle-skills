@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.domain import Complete, Dimension, FollowUp, Rubric
-from app.llm.schemas import Comparison, GeneratedChallenge, GradeResult
+from app.llm.schemas import Comparison, GeneratedChallenge, GradeResult, response_schema
 
 RUBRIC_JSON: dict[str, Any] = {
     "dimensions": [
@@ -158,3 +158,74 @@ def test_grade_schema_requires_the_verdict_tag() -> None:
 
     assert "kind" in defs["FollowUp"]["required"]
     assert "kind" in defs["Complete"]["required"]
+
+
+# --- per-request response schema -----------------------------------------------
+
+
+def _keys_in(schema: Any, key: str) -> bool:
+    if isinstance(schema, dict):
+        return key in schema or any(_keys_in(v, key) for v in schema.values())
+    if isinstance(schema, list):
+        return any(_keys_in(v, key) for v in schema)
+    return False
+
+
+@pytest.mark.parametrize(
+    ("model", "field", "value"),
+    [
+        (GradeResult, "scores", {"type": "integer", "minimum": 0, "maximum": 5}),
+        (Comparison, "notes", {"type": "string", "pattern": r"\S"}),
+    ],
+)
+def test_response_schema_requires_every_rubric_key(
+    model: type[GradeResult | Comparison], field: str, value: dict[str, Any]
+) -> None:
+    keyed = response_schema(model, RUBRIC)["properties"][field]
+
+    assert keyed == {
+        "type": "object",
+        "title": field.title(),
+        "properties": {"data": value, "model": value, "serving": value},
+        "required": ["data", "model", "serving"],
+        "additionalProperties": False,
+    }
+
+
+@pytest.mark.parametrize("model", [GeneratedChallenge, GradeResult, Comparison])
+def test_response_schema_has_no_keyword_anthropic_rejects(model: type[BaseModel]) -> None:
+    """Anthropic answers 400 to `discriminator`: "For 'anyOf', 'discriminator' is not
+    supported"."""
+    schema = response_schema(model, RUBRIC)
+
+    assert not _keys_in(schema, "discriminator")
+    assert not _keys_in(schema, "oneOf")
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+
+
+def test_response_schema_keeps_the_verdict_union_as_any_of() -> None:
+    verdict = response_schema(GradeResult, RUBRIC)["properties"]["verdict"]
+
+    assert verdict["anyOf"] == [{"$ref": "#/$defs/FollowUp"}, {"$ref": "#/$defs/Complete"}]
+
+
+def test_response_schema_without_a_rubric_is_the_model_schema() -> None:
+    assert response_schema(GeneratedChallenge) == GeneratedChallenge.model_json_schema()
+
+
+def test_response_schema_of_a_rubric_bound_model_needs_the_rubric() -> None:
+    with pytest.raises(ValueError, match="rubric"):
+        response_schema(GradeResult)
+
+
+def test_a_key_mismatch_names_the_field_and_the_missing_and_unexpected_keys() -> None:
+    with pytest.raises(ValidationError) as caught:
+        parse_comparison(notes={"data": "Good.", "extra": "Odd."})
+
+    [error] = caught.value.errors()
+    assert error["type"] == "rubric_keys"
+    assert error["msg"] == (
+        "`notes` must have exactly the rubric's keys ['data', 'model', 'serving']: "
+        "missing ['model', 'serving'], unexpected ['extra']"
+    )

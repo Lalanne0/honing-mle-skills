@@ -1,6 +1,7 @@
 """Typed errors for LLM calls. Callers catch the most specific one they can handle.
 
-Messages never include the API key or the gateway's response body.
+Messages never include the API key or headers. Status errors carry the gateway's error
+message, truncated, with the key redacted.
 """
 
 

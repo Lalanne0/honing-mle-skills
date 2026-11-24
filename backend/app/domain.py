@@ -70,15 +70,15 @@ class Rubric(_Value):
             raise ValueError(f"dimension keys must be unique, got {keys}")
         return dimensions
 
-    def check_keys(self, keys: Iterable[str]) -> None:
-        """Raise ValueError unless `keys` are exactly this rubric's dimension keys."""
-        expected = {d.key for d in self.dimensions}
-        given = set(keys)
-        missing, unexpected = sorted(expected - given), sorted(given - expected)
-        if missing or unexpected:
-            raise ValueError(
-                f"keys must match the rubric dimensions: missing {missing}, unexpected {unexpected}"
-            )
+    @property
+    def keys(self) -> list[str]:
+        """The dimension keys, in rubric order."""
+        return [d.key for d in self.dimensions]
+
+    def key_mismatch(self, keys: Iterable[str]) -> tuple[list[str], list[str]]:
+        """The rubric keys missing from `keys`, and the keys of `keys` not in the rubric, sorted."""
+        expected, given = set(self.keys), set(keys)
+        return sorted(expected - given), sorted(given - expected)
 
 
 # --- verdict -----------------------------------------------------------------

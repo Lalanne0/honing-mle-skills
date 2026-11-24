@@ -9,6 +9,7 @@ raises `LLMSchemaError`. Transport failures become the typed errors in
 
 import logging
 from collections.abc import Sequence
+from typing import Any
 
 import httpx2
 import openai
@@ -28,13 +29,15 @@ from app.llm.errors import (
     LLMUpstreamError,
 )
 from app.llm.prompts import PastRound, compare_prompt, generate_prompt, grade_prompt
-from app.llm.schemas import Comparison, GeneratedChallenge, GradeResult
+from app.llm.schemas import Comparison, GeneratedChallenge, GradeResult, response_schema
 
 logger = logging.getLogger("app.llm")
 
 TIMEOUT_SECONDS = 120.0
 MAX_TOKENS = 8192
 """Room for a full scenario, reference solution and rubric."""
+MAX_GATEWAY_MESSAGE = 500
+"""Characters of the gateway's error message kept in the server log."""
 
 
 def _retry_after(response: httpx2.Response) -> float | None:
@@ -44,14 +47,28 @@ def _retry_after(response: httpx2.Response) -> float | None:
         return None
 
 
-def _typed_error(error: openai.APIError) -> LLMError:
-    """Translate an SDK error, most specific first. Never copies the response body."""
+def _gateway_message(body: object, secret: str) -> str:
+    """The error message in a gateway error body, truncated, with the API key redacted.
+
+    Only the message: never the headers or the rest of the body.
+    """
+    while isinstance(body, dict):
+        body = body.get("error") or body.get("message") or body.get("detail")
+    text = str(body).replace(secret, "[redacted]")
+    return text if len(text) <= MAX_GATEWAY_MESSAGE else text[:MAX_GATEWAY_MESSAGE] + "…"
+
+
+def _typed_error(error: openai.APIError, secret: str) -> LLMError:
+    """Translate an SDK error, most specific first."""
     if isinstance(error, openai.APIConnectionError):
         return LLMUnavailableError(f"LLM gateway unreachable: {type(error).__name__}")
     if not isinstance(error, openai.APIStatusError):
         return LLMError(f"LLM gateway call failed: {type(error).__name__}")
     status = error.status_code
     message = f"LLM gateway returned HTTP {status} (request id {error.request_id})"
+    # The gateway's own message is logged, never raised: the error reaches API responses,
+    # and a gateway that echoes the request would quote the hidden reference solution.
+    logger.warning("%s: %s", message, _gateway_message(error.body, secret))
     if status == 429:
         return LLMRateLimitedError(message, _retry_after(error.response))
     if status >= 500:
@@ -103,9 +120,16 @@ def _error_summary(error: ValidationError) -> str:
 
 
 def _retry_note(error: ValidationError) -> str:
+    """Tells the model what was wrong, one line per error: where, and Pydantic's message.
+
+    Only sent back to the model, so the messages may name the rubric's keys.
+    """
+    problems = "\n".join(
+        f"- {'.'.join(map(str, e['loc'])) or 'reply'}: {e['msg']}"
+        for e in error.errors(include_url=False)
+    )
     return (
-        "Your reply failed validation:\n\n"
-        f"{error}\n\n"
+        f"Your reply failed validation:\n\n{problems}\n\n"
         "Reply again with the corrected JSON object only."
     )
 
@@ -146,13 +170,14 @@ class OpenAICompatibleLLM:
     ) -> R:
         messages: list[ChatCompletionMessageParam] = [{"role": "user", "content": prompt}]
         context = {"rubric": rubric} if rubric else None
-        text = self._complete(call, 1, messages, schema)
+        json_schema = response_schema(schema, rubric)
+        text = self._complete(call, 1, messages, schema.__name__, json_schema)
         try:
             return schema.model_validate_json(text, context=context)
         except ValidationError as error:
             messages.append({"role": "assistant", "content": text})
             messages.append({"role": "user", "content": _retry_note(error)})
-        text = self._complete(call, 2, messages, schema)
+        text = self._complete(call, 2, messages, schema.__name__, json_schema)
         try:
             return schema.model_validate_json(text, context=context)
         except ValidationError as error:
@@ -165,13 +190,14 @@ class OpenAICompatibleLLM:
         call: str,
         attempt: int,
         messages: list[ChatCompletionMessageParam],
-        schema: type[BaseModel],
+        name: str,
+        json_schema: dict[str, Any],
     ) -> str:
         response_format: ResponseFormatJSONSchema = {
             "type": "json_schema",
             "json_schema": {
-                "name": schema.__name__,
-                "schema": schema.model_json_schema(),
+                "name": name,
+                "schema": json_schema,
                 "strict": False,
             },
         }
@@ -183,6 +209,6 @@ class OpenAICompatibleLLM:
                 max_tokens=MAX_TOKENS,
             )
         except openai.APIError as error:
-            raise _typed_error(error) from None
+            raise _typed_error(error, self._client.api_key) from None
         _log_usage(completion, call, attempt)
         return _reply_text(completion)
