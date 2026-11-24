@@ -17,6 +17,7 @@ def isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Use a throwaway database and env file; never the real backend/.env."""
     monkeypatch.setattr(app.main, "DB_PATH", tmp_path / "data" / "app.db")
     monkeypatch.delenv("LLM_MODE", raising=False)
+    monkeypatch.delenv("APP_DB_PATH", raising=False)
     use_env(tmp_path, monkeypatch, "LLM_MODE=fake\n")
 
 
@@ -69,3 +70,28 @@ def test_challenges_are_created_and_read_back_through_the_real_wiring() -> None:
 
     assert created["topic"] in {t.value for t in Topic}
     assert fetched == created
+
+
+def test_app_db_path_puts_the_database_where_it_says(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    throwaway = tmp_path / "e2e" / "nested" / "throwaway.db"
+    monkeypatch.setenv("APP_DB_PATH", str(throwaway))
+
+    with TestClient(fastapi_app) as client:
+        assert client.get("/api/health").status_code == 200
+
+    assert throwaway.exists()
+    assert not (tmp_path / "data" / "app.db").exists()
+
+
+def test_app_db_path_with_a_question_mark_is_a_file_name_not_a_query(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    throwaway = tmp_path / "results?old.db"
+    monkeypatch.setenv("APP_DB_PATH", str(throwaway))
+
+    with TestClient(fastapi_app) as client:
+        assert client.get("/api/health").status_code == 200
+
+    assert throwaway.exists()

@@ -229,3 +229,6 @@ target/
 frontend/coverage/
 .playwright-mcp/
 .worker-prompt.md
+frontend/e2e/.data/
+frontend/test-results/
+frontend/playwright-report/

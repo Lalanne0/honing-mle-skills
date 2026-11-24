@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from sqlalchemy import Engine
+from sqlalchemy import URL, Engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine
 
@@ -12,9 +12,10 @@ DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "app.db"
 
 
 def make_engine(path: Path = DEFAULT_DB_PATH) -> Engine:
-    """An engine for a SQLite file, creating its folder if needed."""
-    path.parent.mkdir(exist_ok=True)
-    return create_engine(f"sqlite:///{path}")
+    """An engine for a SQLite file, creating its folders if needed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # URL.create keeps a "?" in the path as part of the file name, not a query string.
+    return create_engine(URL.create("sqlite", database=str(path)))
 
 
 def memory_engine() -> Engine:
