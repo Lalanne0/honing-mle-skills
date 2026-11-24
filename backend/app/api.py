@@ -26,12 +26,14 @@ from app.llm.errors import LLMError, LLMRateLimitedError
 from app.llm.port import LLMPort
 from app.repository import ChallengeChangedError, ChallengeNotFoundError, ChallengeRepository
 from app.revealing import compare
-from app.views import ChallengePublic, ChallengeRevealed, view
+from app.stats import TopicStats, topic_stats
+from app.views import ChallengePublic, ChallengeRevealed, ChallengeSummary, summary, view
 
 DEFAULT_RETRY_AFTER_SECONDS = 30
 """Sent with a 503 when the gateway did not say how long to wait."""
 
 router = APIRouter(prefix="/api/challenges")
+stats_router = APIRouter(prefix="/api/stats")
 
 
 # --- dependencies (overridden in tests) ---------------------------------------------
@@ -79,6 +81,21 @@ def create_challenge(
     )
     repository.create(challenge)
     return ChallengePublic.model_validate(challenge)
+
+
+@router.get("")
+def list_challenges(
+    repository: Repository, topic: Topic | None = None, level: Level | None = None
+) -> list[ChallengeSummary]:
+    """The history: past challenges newest first, optionally of one topic and/or level."""
+    return [summary(c) for c in repository.list(topic=topic, level=level)]
+
+
+@stats_router.get("")
+def get_stats(repository: Repository) -> list[TopicStats]:
+    """For each topic attempted: attempts, average score, trend and weakest dimensions,
+    weakest topic first."""
+    return topic_stats(repository.list())
 
 
 @router.get("/{challenge_id}")
@@ -159,6 +176,7 @@ def _llm_failed(_: Request, error: Exception) -> JSONResponse:
 def install(app: FastAPI) -> None:
     """Add the challenge routes and the error handlers to `app`."""
     app.include_router(router)
+    app.include_router(stats_router)
     app.add_exception_handler(ChallengeNotFoundError, _detail(404))
     app.add_exception_handler(IllegalTransitionError, _detail(409))
     app.add_exception_handler(ChallengeChangedError, _detail(409))

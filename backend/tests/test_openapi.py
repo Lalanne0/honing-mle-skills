@@ -11,4 +11,8 @@ def test_main_prints_the_spec_with_the_challenge_routes(capsys: pytest.CaptureFi
     spec = json.loads(capsys.readouterr().out)
     assert "/api/challenges" in spec["paths"]
     assert "/api/challenges/{challenge_id}" in spec["paths"]
-    assert {"ChallengePublic", "ChallengeRevealed"} <= spec["components"]["schemas"].keys()
+    assert "get" in spec["paths"]["/api/challenges"]
+    assert "/api/stats" in spec["paths"]
+    assert {"ChallengePublic", "ChallengeRevealed", "ChallengeSummary", "TopicStats"} <= spec[
+        "components"
+    ]["schemas"].keys()

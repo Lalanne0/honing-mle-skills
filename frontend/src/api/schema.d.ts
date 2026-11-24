@@ -11,7 +11,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Challenges
+         * @description The history: past challenges newest first, optionally of one topic and/or level.
+         */
+        get: operations["list_challenges_api_challenges_get"];
         put?: never;
         /**
          * Create Challenge
@@ -79,6 +83,27 @@ export interface paths {
          *     stored while the comparison was written (409: reveal again).
          */
         post: operations["reveal_challenge_api_challenges__challenge_id__reveal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stats
+         * @description For each topic attempted: attempts, average score, trend and weakest dimensions,
+         *     weakest topic first.
+         */
+        get: operations["get_stats_api_stats_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -158,6 +183,29 @@ export interface components {
             rubric: components["schemas"]["Rubric"];
             comparison: components["schemas"]["Comparison"];
         };
+        /** ChallengeSummary */
+        ChallengeSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            level: components["schemas"]["Level"];
+            topic: components["schemas"]["Topic"];
+            /** Scenario Md */
+            scenario_md: string;
+            /** State */
+            state: components["schemas"]["Awaiting"] | components["schemas"]["Completed"] | components["schemas"]["Revealed"];
+            /** Rounds Answered */
+            rounds_answered: number;
+            /** Score */
+            score: number | null;
+        };
         /**
          * Comparison
          * @description Shown at reveal: the user's answers compared with the reference, noted per dimension.
@@ -201,6 +249,13 @@ export interface components {
             weight: number;
             /** Full Marks Criteria */
             full_marks_criteria: string;
+        };
+        /** DimensionStat */
+        DimensionStat: {
+            /** Key */
+            key: string;
+            /** Average Score */
+            average_score: number;
         };
         /** FollowUp */
         FollowUp: {
@@ -265,6 +320,20 @@ export interface components {
          * @enum {string}
          */
         Topic: "rag_and_llm_apps" | "model_serving" | "batch_vs_streaming_inference" | "training_pipelines" | "feature_stores" | "mlops_monitoring_and_drift" | "data_pipelines" | "recommender_systems" | "ab_testing_and_experimentation" | "privacy_and_security";
+        /** TopicStats */
+        TopicStats: {
+            topic: components["schemas"]["Topic"];
+            /** Attempts */
+            attempts: number;
+            /** Graded */
+            graded: number;
+            /** Average Score */
+            average_score: number | null;
+            /** Trend */
+            trend: number | null;
+            /** Weakest Dimensions */
+            weakest_dimensions: components["schemas"]["DimensionStat"][];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -287,6 +356,38 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_challenges_api_challenges_get: {
+        parameters: {
+            query?: {
+                topic?: components["schemas"]["Topic"] | null;
+                level?: components["schemas"]["Level"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChallengeSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_challenge_api_challenges_post: {
         parameters: {
             query?: never;
@@ -413,6 +514,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_api_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicStats"][];
                 };
             };
         };
