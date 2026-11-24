@@ -53,23 +53,54 @@ If nothing qualifies and nothing is in flight, the loop is done: go to step 7. I
 
 For each `VIN-<N>`, from the main repo root:
 
+### a. Worktree and prompt file
+
 ```
 git worktree add --detach ../hms-vin<N> main
-cmux new-workspace --name hms-vin<N> --cwd ../hms-vin<N> --command "BACKEND_PORT=<8000+N> FRONTEND_PORT=<5200+N> claude '<prompt>'"
 ```
 
-Each worktree gets its own ports (VIN-23 gets 8023 and 5223) so parallel workers can run `make dev` side by side. `scripts/dev.sh` and the Vite config read both variables, and the Vite `/api` proxy follows `BACKEND_PORT`.
+Write the worker prompt to `../hms-vin<N>/.worker-prompt.md` (gitignored), with `<N>`, the ports and `<ORCH>` (the orchestrator ref from step 2) filled in. The file is read by `cat`, so quotes, backticks and `$` in it are fine:
 
-The prompt, with `<N>`, the ports and `<ORCH>` (the orchestrator ref from step 2) filled in. It sits inside single quotes inside a double-quoted `--command`, so it must contain no apostrophes, no double quotes, no `$` and no backticks:
-
-> Install dependencies for backend and frontend. Then pick up VIN-<N> and follow CLAUDE.md end to end. Other issues run in parallel, so make dev must use this session ports: BACKEND_PORT=<8000+N> and FRONTEND_PORT=<5200+N> are already exported, and the browser check opens http://127.0.0.1:<5200+N>.
-> You run unattended. Do not ask me routine questions: make a reasonable decision consistent with CLAUDE.md, docs/glossary.md and the VIN-14 design system, and list each decision under a Decisions made heading in the PR description.
+> Install dependencies for backend and frontend. Then pick up VIN-<N> and follow CLAUDE.md end to end. Other issues run in parallel, so make dev must use this session's ports: BACKEND_PORT=<8000+N> and FRONTEND_PORT=<5200+N> are already exported, and the browser check opens http://127.0.0.1:<5200+N>.
+>
+> You run unattended. Do not ask me routine questions: make a reasonable decision consistent with CLAUDE.md, docs/glossary.md and the VIN-14 design system, and list each decision under a "Decisions made" heading in the PR description.
+>
 > Live tests: only a VIN-9 style smoke test is allowed, at most one live call for this issue. Nothing else that costs money.
-> Do not merge: never run gh pr merge, only the land skill in the orchestrator merges.
-> Hand-off: once the PR is open, the issue is In Review, gh pr checks shows checks named lint-and-test and CodeRabbit that both exist and pass and every other check passing or skipping (the land gates), and the CodeRabbit rounds are done per the cap with no unresolved CodeRabbit thread, run cmux send --workspace <ORCH> with the text /land followed by the PR number as one quoted argument, then run cmux send-key --workspace <ORCH> Enter, then stop. If cmux send fails, run cmux notify --title hms-loop --body with the text PR number ready for /land, then stop.
-> Stop conditions: if lint-and-test fails on 3 pushes in a row, or any other check (CodeRabbit included) still fails or is cancelled after 3 fix attempts, or you need credentials, or anything that costs money beyond that one live call, do not send /land. Move VIN-<N> to Blocked with a comment explaining why, run cmux notify --title hms-loop --body with the text VIN-<N> blocked and a short reason. Then run cmux send --workspace <ORCH> with the text /next as one quoted argument and cmux send-key --workspace <ORCH> Enter, so the orchestrator moves on to other issues, then stop.
+>
+> Do not merge: never run `gh pr merge`; only the land skill in the orchestrator merges.
+>
+> Hand-off: once the PR is open, the issue is In Review, `gh pr checks` shows checks named lint-and-test and CodeRabbit that both exist and pass and every other check passing or skipping (the land gates), and the CodeRabbit rounds are done per the cap with no unresolved CodeRabbit thread, run `cmux send --workspace <ORCH> "/land <PR number>"`, then `cmux send-key --workspace <ORCH> Enter`, then stop. If cmux send fails, run `cmux notify --title hms-loop --body "PR <PR number> ready for /land"`, then stop.
+>
+> Stop conditions: if lint-and-test fails on 3 pushes in a row, or any other check (CodeRabbit included) still fails or is cancelled after 3 fix attempts, or you need credentials, or anything that costs money beyond that one live call, do not send /land. Move VIN-<N> to Blocked with a comment explaining why, and run `cmux notify --title hms-loop --body "VIN-<N> blocked: <short reason>"`. Then run `cmux send --workspace <ORCH> "/next"` and `cmux send-key --workspace <ORCH> Enter`, so the orchestrator moves on to other issues, then stop.
 
-Pass the prompt to `claude` as one line: join the lines above with spaces.
+### b. Workspace
+
+```
+cmux new-workspace --name hms-vin<N> --cwd <absolute path of ../hms-vin<N>> --env BACKEND_PORT=<8000+N> --env FRONTEND_PORT=<5200+N>
+```
+
+No `--command`: a long command typed before the shell is ready gets stuck. Record the `workspace:<id>` ref it prints and use that ref, never the name, in every later `cmux` call. Each worktree gets its own ports (VIN-23 gets 8023 and 5223) so parallel workers can run `make dev` side by side. `scripts/dev.sh` and the Vite config read both variables, and the Vite `/api` proxy follows `BACKEND_PORT`.
+
+### c. Wait for the shell
+
+Poll `cmux read-screen --workspace <ref>` once a second, for up to 30 seconds, until the last non-empty line is a shell prompt (it ends with `%`, `$`, `#`, `❯` or `>`). A `Last login:` line alone is not ready. If no prompt shows, report it and go on with the others.
+
+### d. Launch Claude
+
+```
+cmux send-key --workspace <ref> ctrl+c
+cmux send --workspace <ref> 'claude "$(cat .worker-prompt.md)"'
+cmux send-key --workspace <ref> enter
+```
+
+The ctrl+c clears anything half-typed, so the same three commands also relaunch a worker in an existing workspace.
+
+### e. Check that Claude started
+
+Poll `cmux read-screen --workspace <ref>` once a second, for up to 20 seconds:
+- `esc to interrupt` or `for shortcuts` on screen: the worker is running.
+- A "trust this folder" (or "Do you trust the files") dialog: **do not answer it.** Run `cmux notify --title hms-loop --body "hms-vin<N>: trust dialog waiting"` and report it as `your answer in hms-vin<N>`.
+- Neither: report `launch failed in hms-vin<N>` with the last screen lines.
 
 The worktree is detached on purpose: the session creates the issue branch from its `gitBranchName` as CLAUDE.md says. Do **not** move the issue to In Progress here; the session does that.
 
@@ -89,7 +120,7 @@ For "Waiting on", check `gh pr list --state open --json number,title,headRefName
 - no PR yet: `session working`, or `session starting` if just launched
 - PR open: `PR #<n> open, worker hands off with /land <n>` (or `checks failing on PR #<n>` if `gh pr checks <n>` shows a failure)
 - Linear status Blocked: `Blocked: <reason from the latest issue comment>`
-- `cmux read-screen --workspace hms-vin<N> --lines 20` shows a question or permission prompt: `your answer in hms-vin<N>`
+- `cmux read-screen --workspace <ref of hms-vin<N>> --lines 20` (ref from `cmux workspace list`, not the name) shows a question or permission prompt: `your answer in hms-vin<N>`
 
 Then list any Todo issues that were skipped and why (blocked by VIN-x, area busy). Last, list any issue whose area was guessed because it had no `area:*` label, with the guess, for example: `VIN-24: no area label, guessed area:backend`.
 
