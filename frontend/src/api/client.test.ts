@@ -258,6 +258,32 @@ describe('api', () => {
     expect(fetchMock.mock.calls[0][1]?.body).toBeUndefined()
   })
 
+  it('lists the history with no query when nothing is filtered', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json([])))
+
+    await api.listChallenges({ topic: null, level: null })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/challenges')
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('GET')
+  })
+
+  it('lists the history of one topic and level', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json([])))
+
+    await api.listChallenges({ topic: 'model_serving', level: 'senior' })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/challenges?topic=model_serving&level=senior')
+  })
+
+  it('gets the topic stats', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(json([])))
+
+    await api.getStats()
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/stats')
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('GET')
+  })
+
   it.each([
     ['grading', () => api.submitAnswer('1', { round: 1, answer_md: 'x' })],
     ['revealing', () => api.revealChallenge('1')],
