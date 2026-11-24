@@ -2,18 +2,29 @@
 
 import math
 import random
+from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.challenge import Challenge
-from app.domain import Awaiting, Level, Topic
+from app.answering import graded_round, material, past_rounds
+from app.challenge import Challenge, Round
+from app.domain import (
+    MAX_ROUNDS,
+    Awaiting,
+    IllegalTransitionError,
+    Level,
+    NonBlank,
+    State,
+    Topic,
+    check_answer,
+)
 from app.llm.errors import LLMError, LLMRateLimitedError
 from app.llm.port import LLMPort
-from app.repository import ChallengeNotFoundError, ChallengeRepository
+from app.repository import ChallengeNotFoundError, ChallengeRepository, DuplicateRoundError
 from app.views import ChallengePublic, ChallengeRevealed, view
 
 DEFAULT_RETRY_AFTER_SECONDS = 30
@@ -73,13 +84,47 @@ def create_challenge(
 def get_challenge(
     challenge_id: UUID, repository: Repository
 ) -> ChallengeRevealed | ChallengePublic:
-    try:
-        return view(repository.get(challenge_id))
-    except ChallengeNotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
+    return view(repository.get(challenge_id))
 
 
-# --- LLM errors ------------------------------------------------------------------
+class SubmitAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    round: Annotated[int, Field(ge=1, le=MAX_ROUNDS)]
+    """The round this answer is for. A second submit for the same round gets a 409."""
+    answer_md: NonBlank
+
+
+class AnswerGraded(BaseModel):
+    round: Round
+    state: State
+    """The state the grade led to: the next round awaited, or completed."""
+
+
+@router.post("/{challenge_id}/answers")
+def submit_answer(
+    challenge_id: UUID, body: SubmitAnswer, llm: Llm, repository: Repository
+) -> AnswerGraded:
+    """Grade an answer and store it as a round. Refused before any model call when the
+    challenge does not await this round; nothing is stored if the model fails."""
+    challenge = repository.get(challenge_id)
+    check_answer(challenge.state, body.round)
+    grade = llm.grade(material(challenge), past_rounds(challenge), body.answer_md)
+    round_, state = graded_round(challenge.state, body.round, body.answer_md, grade)
+    repository.add_round(challenge_id, round_, state)
+    return AnswerGraded(round=round_, state=state)
+
+
+# --- errors ----------------------------------------------------------------------
+
+
+def _detail(status_code: int) -> Callable[[Request, Exception], JSONResponse]:
+    """A handler that answers `status_code` with the error's message."""
+
+    def handle(_: Request, error: Exception) -> JSONResponse:
+        return JSONResponse(status_code=status_code, content={"detail": str(error)})
+
+    return handle
 
 
 def _rate_limited(_: Request, error: Exception) -> JSONResponse:
@@ -99,7 +144,10 @@ def _llm_failed(_: Request, error: Exception) -> JSONResponse:
 
 
 def install(app: FastAPI) -> None:
-    """Add the challenge routes and the LLM error handlers to `app`."""
+    """Add the challenge routes and the error handlers to `app`."""
     app.include_router(router)
+    app.add_exception_handler(ChallengeNotFoundError, _detail(404))
+    app.add_exception_handler(IllegalTransitionError, _detail(409))
+    app.add_exception_handler(DuplicateRoundError, _detail(409))
     app.add_exception_handler(LLMRateLimitedError, _rate_limited)
     app.add_exception_handler(LLMError, _llm_failed)
