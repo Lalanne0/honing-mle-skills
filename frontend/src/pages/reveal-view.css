@@ -73,6 +73,11 @@
   gap: var(--space-5);
   align-items: start;
 }
+/* A read-only answer is as tall as its text, not a blank writing area. */
+.compare__panel .editor,
+.compare__panel .editor .cm-editor {
+  min-height: 0;
+}
 .compare__note {
   margin: 0 0 var(--space-3);
   color: var(--muted);
