@@ -62,10 +62,8 @@ Other checks: none failing, pending or cancelled
 6. The head SHA did not change while the gates were being checked.
 
 If the only failing gates are pending checks (bucket `pending`) or `mergeable` UNKNOWN, wait once:
-
-```
-gh pr checks <n> --watch
-```
+- Pending checks: `gh pr checks <n> --watch`, which returns when every check has finished.
+- `mergeable` UNKNOWN: `--watch` does not wait for this. Run `gh pr view <n> --json mergeable` again, up to 3 times, until it is no longer UNKNOWN.
 
 Then check every gate again from the top of this step. Wait at most once per `/land` run.
 

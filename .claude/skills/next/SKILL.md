@@ -67,7 +67,7 @@ The prompt, with `<N>`, the ports and `<ORCH>` (the orchestrator ref from step 2
 > Live tests: only a VIN-9 style smoke test is allowed, at most one live call for this issue. Nothing else that costs money.
 > Do not merge: never run gh pr merge, only the land skill in the orchestrator merges.
 > Hand-off: once the PR is open, the issue is In Review, gh pr checks shows every check passing, and the CodeRabbit rounds are done per the cap with no unresolved CodeRabbit thread, run cmux send --workspace <ORCH> with the text /land followed by the PR number as one quoted argument, then run cmux send-key --workspace <ORCH> Enter, then stop. If cmux send fails, run cmux notify --title hms-loop --body with the text PR number ready for /land, then stop.
-> Stop conditions: if lint-and-test fails on 3 pushes in a row, or you need credentials, or anything that costs money beyond that one live call, do not send /land. Move VIN-<N> to Blocked with a comment explaining why, run cmux notify --title hms-loop --body with the text VIN-<N> blocked and a short reason, then stop.
+> Stop conditions: if lint-and-test fails on 3 pushes in a row, or you need credentials, or anything that costs money beyond that one live call, do not send /land. Move VIN-<N> to Blocked with a comment explaining why, run cmux notify --title hms-loop --body with the text VIN-<N> blocked and a short reason. Then run cmux send --workspace <ORCH> with the text /next as one quoted argument and cmux send-key --workspace <ORCH> Enter, so the orchestrator moves on to other issues, then stop.
 
 Pass the prompt to `claude` as one line: join the lines above with spaces.
 
@@ -98,7 +98,7 @@ Then list any Todo issues that were skipped and why (blocked by VIN-x, area busy
 Run this step only when nothing is in flight (step 3) and no Todo issue can start (step 4): none are left, or every remaining one waits on an unfinished blocker.
 
 Gather:
-- **Merged PRs**: the PRs this session merged with `/land`. To get their bodies, run `gh pr list --state merged --search "merged:>=<date of this session's first /next>" --json number,title,body,mergedAt`.
+- **Merged PRs**: the PR numbers this session merged with `/land` (each `/land` report names its PR). Do not search by merge date: that picks up PRs other sessions merged. Get each body with `gh pr view <n> --json number,title,body`.
 - **Blocked issues**: `list_issues` with project `honing-mle-skills`, team `VIN`, state `Blocked`. Take each reason from its latest comment (`list_comments`).
 - **Decisions to review**: the bullets under "Decisions made" in each merged PR body, grouped by PR.
 - **Stuck Todo issues**: any Todo issue left, with the blocker it waits on.
