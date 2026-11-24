@@ -16,6 +16,12 @@ export type Topic = Schemas['Topic']
 export type Round = Schemas['Round']
 export type AnswerGraded = Schemas['AnswerGraded']
 export type SubmitAnswer = Schemas['SubmitAnswer']
+export type ChallengeSummary = Schemas['ChallengeSummary']
+export type TopicStats = Schemas['TopicStats']
+export type DimensionStat = Schemas['DimensionStat']
+export type State = ChallengeSummary['state']
+/** A history filter: null means any topic or any level. */
+export type HistoryFilters = { topic: Topic | null; level: Level | null }
 
 export type ApiErrorKind = 'network' | 'not_found' | 'conflict' | 'invalid' | 'model_failed' | 'busy' | 'server'
 
@@ -127,7 +133,20 @@ function asApiError(error: unknown, signal: AbortSignal): ApiError {
   return new ApiError('network', 'The server could not be reached.')
 }
 
+function historyPath({ topic, level }: HistoryFilters): string {
+  const query = new URLSearchParams()
+  if (topic) query.set('topic', topic)
+  if (level) query.set('level', level)
+  const search = query.toString()
+  return search ? `/api/challenges?${search}` : '/api/challenges'
+}
+
 export const api = {
+  /** The history, newest first. */
+  listChallenges: (filters: HistoryFilters, signal?: AbortSignal) =>
+    request<ChallengeSummary[]>(historyPath(filters), { method: 'GET', signal }),
+  /** Topic stats for every topic attempted, weakest first. */
+  getStats: (signal?: AbortSignal) => request<TopicStats[]>('/api/stats', { method: 'GET', signal }),
   createChallenge: (body: CreateChallenge, signal?: AbortSignal) =>
     request<ChallengePublic>('/api/challenges', { method: 'POST', body, timeoutMs: MODEL_TIMEOUT_MS, signal }),
   getChallenge: (id: string, signal?: AbortSignal) =>
