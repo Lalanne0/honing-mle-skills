@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+reviews:
+  profile: chill
+  path_instructions:
+    - path: ".claude/**"
+      instructions: >-
+        These files are agent instructions (skills, settings) read by Claude Code.
+        Flag only clear mistakes: wrong commands, paths, flags or names, steps that
+        contradict each other or CLAUDE.md, and unsafe actions. Do not flag
+        hypothetical edge cases, wording preferences or missing defensive checks.
+    - path: "**/*.md"
+      instructions: >-
+        Markdown files here are agent instructions and project docs read by Claude Code.
+        Flag only clear mistakes: wrong commands, paths, flags or names, steps that
+        contradict each other or CLAUDE.md, and factual errors. Do not flag
+        hypothetical edge cases, wording preferences or missing defensive checks.
