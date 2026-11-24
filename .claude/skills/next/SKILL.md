@@ -111,7 +111,9 @@ cmux close-workspace --workspace <ref> --force
 git worktree remove ../hms-vin<N>
 ```
 
-`--force` on the workspace is safe here: no worker is running in it. Never pass `--force` to `git worktree remove`; the prompt file is ignored, so a clean worktree is removed without it. If git refuses, leave the worktree and report git's message, so the user can clean it up. The issue stays Todo, so the next `/next` launches it again. Report `launch failed in hms-vin<N>, cleaned up, retried by the next /next` with the saved screen lines, and go on with the others.
+`--force` on the workspace is safe here: no worker is running in it. Never pass `--force` to `git worktree remove`; the prompt file is ignored, so a clean worktree is removed without it. Then report, with the saved screen lines, and go on with the others:
+- Worktree removed: `launch failed in hms-vin<N>, cleaned up, retried by the next /next`. The issue stays Todo, so the next `/next` launches it again.
+- Git refused: `launch failed in hms-vin<N>, worktree not removed: <git's message>; remove ../hms-vin<N> before it can be retried`. Until then step 4 skips the issue.
 
 The worktree is detached on purpose: the session creates the issue branch from its `gitBranchName` as CLAUDE.md says. Do **not** move the issue to In Progress here; the session does that.
 
