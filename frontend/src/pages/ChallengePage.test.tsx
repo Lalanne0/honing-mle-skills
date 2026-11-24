@@ -295,5 +295,7 @@ describe('challenge screen', () => {
 
     expect(await screen.findByRole('heading', { name: 'Reference solution' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reveal solution' })).not.toBeInTheDocument()
+    // Revealed before any answer: no round was graded, so there is no progress to show.
+    expect(screen.queryByRole('img', { name: /round/i })).not.toBeInTheDocument()
   })
 })

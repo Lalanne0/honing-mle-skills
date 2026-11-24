@@ -15,6 +15,7 @@ describe('MarkdownEditor', () => {
 
     const textbox = screen.getByRole('textbox', { name: 'Your answer' })
     expect(textbox).toHaveAttribute('aria-multiline', 'true')
+    expect(textbox).toHaveAttribute('contenteditable', 'true')
     expect(viewOf(container).state.doc.toString()).toBe('# Draft')
   })
 

@@ -32,6 +32,11 @@ function isRevealed(challenge: Challenge): challenge is ChallengeRevealed {
   return 'reference_md' in challenge
 }
 
+/** A challenge revealed before any answer has no rounds to show progress for. */
+function hasProgress(challenge: Challenge): boolean {
+  return challenge.state.kind === 'awaiting' || challenge.rounds.length > 0
+}
+
 /** The round the pips point at: the one awaited, or the last one graded. */
 function pipRound(challenge: Challenge): PipRound {
   const round = challenge.state.kind === 'awaiting' ? challenge.state.round : Math.max(1, challenge.rounds.length)
@@ -66,7 +71,9 @@ function ChallengeView({ initial }: { initial: Challenge }) {
           <p className="page__eyebrow">{LEVEL_LABELS[challenge.level]}</p>
           <h1>{TOPIC_LABELS[challenge.topic]}</h1>
         </div>
-        <ProgressPips round={pipRound(challenge)} complete={challenge.state.kind !== 'awaiting'} />
+        {hasProgress(challenge) && (
+          <ProgressPips round={pipRound(challenge)} complete={challenge.state.kind !== 'awaiting'} />
+        )}
         <div className="challenge__actions">
           {!isRevealed(challenge) && (
             <Button variant="secondary" onClick={askToReveal} disabled={reveal.state.status === 'running'}>

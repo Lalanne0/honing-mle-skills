@@ -139,7 +139,7 @@ export const api = {
       timeoutMs: MODEL_TIMEOUT_MS,
       signal,
     }),
-  /** The reveal endpoint comes with VIN-12; until it lands this answers 404. */
+  /** Writes the comparison on the first reveal, so it waits on the model. */
   revealChallenge: (id: string, signal?: AbortSignal) =>
     request<ChallengeRevealed>(`/api/challenges/${encodeURIComponent(id)}/reveal`, {
       method: 'POST',
