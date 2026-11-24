@@ -23,7 +23,7 @@ from app.llm.errors import (
 )
 from app.llm.gateway import OpenAICompatibleLLM
 from app.llm.prompts import PastRound
-from app.llm.schemas import GeneratedChallenge
+from app.llm.schemas import Comparison, GeneratedChallenge, GradeResult, response_schema
 
 KEY = "sk-test-do-not-leak-0123456789"
 MODEL = "anthropic/test-model"
@@ -138,7 +138,7 @@ def test_the_request_asks_for_the_schema_without_strict_mode() -> None:
         "type": "json_schema",
         "json_schema": {
             "name": "GeneratedChallenge",
-            "schema": GeneratedChallenge.model_json_schema(),
+            "schema": response_schema(GeneratedChallenge),
             "strict": False,
         },
     }
@@ -205,7 +205,44 @@ def test_a_reply_that_breaks_the_rubric_is_retried() -> None:
     grade = gateway.llm().grade(CHALLENGE, [], "answer")
 
     assert grade.scores["serving"] == 1
-    assert "missing ['serving']" in gateway.requests[1]["messages"][2]["content"]
+    note = gateway.requests[1]["messages"][2]["content"]
+    assert "`scores` must have exactly the rubric's keys ['data', 'model', 'serving']" in note
+    assert "missing ['serving']" in note
+
+
+def test_the_retry_note_names_missing_keys_of_an_empty_dict() -> None:
+    """The live compare call came back with `notes: {}`."""
+    empty = {**COMPARISON_JSON, "notes": {}}
+    gateway = Gateway(completion(json.dumps(empty)), completion(json.dumps(COMPARISON_JSON)))
+    grade = Gateway(completion(json.dumps(GRADE_JSON))).llm().grade(CHALLENGE, [], "answer")
+
+    gateway.llm().compare(CHALLENGE, [PastRound(answer="answer", grade=grade)])
+
+    note = gateway.requests[1]["messages"][2]["content"]
+    assert "missing ['data', 'model', 'serving']" in note
+    assert "value_error" not in note
+    assert "input_value" not in note
+
+
+@pytest.mark.parametrize(
+    ("call", "reply", "model"),
+    [("grade", GRADE_JSON, GradeResult), ("compare", COMPARISON_JSON, Comparison)],
+)
+def test_rubric_bound_calls_send_a_schema_built_from_the_rubric(
+    call: str, reply: dict[str, Any], model: type[GradeResult | Comparison]
+) -> None:
+    gateway = Gateway(completion(json.dumps(reply)))
+    grade = GradeResult.model_validate(GRADE_JSON, context={"rubric": CHALLENGE.rubric})
+    llm = gateway.llm()
+
+    if call == "grade":
+        llm.grade(CHALLENGE, [], "answer")
+    else:
+        llm.compare(CHALLENGE, [PastRound(answer="answer", grade=grade)])
+
+    sent = gateway.requests[0]["response_format"]["json_schema"]
+    assert sent["name"] == model.__name__
+    assert sent["schema"] == response_schema(model, CHALLENGE.rubric)
 
 
 def test_two_invalid_replies_raise_a_schema_error_after_exactly_two_calls() -> None:
