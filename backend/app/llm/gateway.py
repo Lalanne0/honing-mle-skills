@@ -35,6 +35,8 @@ logger = logging.getLogger("app.llm")
 TIMEOUT_SECONDS = 120.0
 MAX_TOKENS = 8192
 """Room for a full scenario, reference solution and rubric."""
+MAX_GATEWAY_MESSAGE = 500
+"""Characters of the gateway's error message kept in a typed error."""
 
 
 def _retry_after(response: httpx2.Response) -> float | None:
@@ -44,14 +46,28 @@ def _retry_after(response: httpx2.Response) -> float | None:
         return None
 
 
-def _typed_error(error: openai.APIError) -> LLMError:
-    """Translate an SDK error, most specific first. Never copies the response body."""
+def _gateway_message(body: object, secret: str) -> str:
+    """The error message in a gateway error body, truncated, with the API key redacted.
+
+    Only the message: never the headers or the rest of the body.
+    """
+    while isinstance(body, dict):
+        body = body.get("error") or body.get("message") or body.get("detail")
+    text = str(body).replace(secret, "[redacted]")
+    return text if len(text) <= MAX_GATEWAY_MESSAGE else text[:MAX_GATEWAY_MESSAGE] + "…"
+
+
+def _typed_error(error: openai.APIError, secret: str) -> LLMError:
+    """Translate an SDK error, most specific first."""
     if isinstance(error, openai.APIConnectionError):
         return LLMUnavailableError(f"LLM gateway unreachable: {type(error).__name__}")
     if not isinstance(error, openai.APIStatusError):
         return LLMError(f"LLM gateway call failed: {type(error).__name__}")
     status = error.status_code
-    message = f"LLM gateway returned HTTP {status} (request id {error.request_id})"
+    message = (
+        f"LLM gateway returned HTTP {status} (request id {error.request_id}): "
+        f"{_gateway_message(error.body, secret)}"
+    )
     if status == 429:
         return LLMRateLimitedError(message, _retry_after(error.response))
     if status >= 500:
@@ -183,6 +199,6 @@ class OpenAICompatibleLLM:
                 max_tokens=MAX_TOKENS,
             )
         except openai.APIError as error:
-            raise _typed_error(error) from None
+            raise _typed_error(error, self._client.api_key) from None
         _log_usage(completion, call, attempt)
         return _reply_text(completion)
