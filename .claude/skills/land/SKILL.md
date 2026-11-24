@@ -1,12 +1,12 @@
 ---
 name: land
-description: Merge a finished honing-mle-skills PR once CI and CodeRabbit pass, clean up its worktree and cmux workspace, tell the other running sessions to rebase, then run /next. Use when the user runs /land <PR number>.
+description: Merge a finished honing-mle-skills PR once CI and CodeRabbit pass, clean up its worktree and cmux workspace, tell the other running sessions to rebase, then run /next. If a gate fails, block the issue, notify the user and still run /next. Use when the user or a worker session runs /land <PR number>.
 argument-hint: <PR number>
 ---
 
 # /land <PR number>
 
-Land the one PR the user named. This skill is the only thing allowed to merge. When every gate passes it merges straight away, without asking; when any gate fails it merges nothing.
+Land the one PR named. Usually a worker session sends `/land <n>` here once its PR is ready; the user can also run it. This skill is the only thing allowed to merge. When every gate passes it merges straight away, without asking; when any gate fails it merges nothing, and the loop goes on with the other issues.
 
 **Run it from the main checkout**, the worktree that has `main` checked out (`git worktree list` shows it as `[main]`). If the current directory is somewhere else, `cd` there first. Never run /land from an `hms-vin*` worktree.
 
@@ -61,7 +61,26 @@ Other checks: none failing, pending or cancelled
 5. There are 0 unresolved CodeRabbit threads.
 6. The head SHA did not change while the gates were being checked.
 
-If any gate fails, say which ones and stop. Do not merge, wait, retry or override; the user runs /land again when the PR is ready.
+If the only failing gates are pending checks (bucket `pending`) or `mergeable` UNKNOWN, wait once:
+
+```
+gh pr checks <n> --watch
+```
+
+Then check every gate again from the top of this step. Wait at most once per `/land` run.
+
+If any gate still fails, **do not merge** and never override. Instead:
+
+1. Find the issue number from the head branch (`vlalanne0/vin-<N>-...`).
+2. `save_comment` on VIN-<N>: the PR link, which gates failed and what they showed, and that the user runs `/land <n>` once it is fixed.
+3. `save_issue` VIN-<N> with state `Blocked`, so `/next` stops counting it as in flight. Leave its worktree and workspace alone.
+4. Notify the user:
+
+   ```
+   cmux notify --title hms-loop --body "PR #<n> not merged: <failing gates>"
+   ```
+
+5. Skip steps 2 to 5 and go to step 6.
 
 ## 2. Merge
 
@@ -139,4 +158,4 @@ If `cmux send` fails because the session has a question or dialog open, do not u
 
 ## 6. Next batch
 
-Report what was merged, what was cleaned up and which workspaces were notified. Then run the `/next` skill.
+Report what was merged (or which gates failed), what was cleaned up and which workspaces were notified. Then run the `/next` skill.
