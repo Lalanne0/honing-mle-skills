@@ -1,6 +1,6 @@
 # Glossary
 
-Use these terms the same way in code, UI and issues. Code names are in `backend/app/domain.py`, except `Challenge` and `Round`, which are in `backend/app/challenge.py`, and `GradeResult` and `Comparison`, which are in `backend/app/llm/schemas.py`.
+Use these terms the same way in code, UI and issues. Code names are in `backend/app/domain.py`, except `Challenge` and `Round`, which are in `backend/app/challenge.py`, `GradeResult` and `Comparison`, which are in `backend/app/llm/schemas.py`, and the history and stats terms, which are in `backend/app/views.py` (`ChallengeSummary`) and `backend/app/stats.py`.
 
 | Term | Code | Meaning |
 |---|---|---|
@@ -17,6 +17,12 @@ Use these terms the same way in code, UI and issues. Code names are in `backend/
 | **Reveal** | `RevealRequested`, `Revealed` | Showing the reference solution and rubric to the user. Allowed from any state. Once revealed, the challenge takes no more answers. `Revealed` is final. |
 | **Reference solution** | — | The model answer to a challenge. Like the rubric, it never leaves the backend before reveal. |
 | **Comparison** | `Comparison` | Shown at reveal: the user's answers side by side with the reference solution, with a summary and one note per rubric dimension. Written once, at the first reveal, and stored with the challenge. When nothing was answered it says there is no answer to compare, without a model call. |
+| **Weighted score** | `weighted_score` | A challenge's score from 0 to 100: the scores of its last graded round, each weighted by its dimension's rubric weight, as a share of full marks. A challenge with no graded round has none. |
+| **History** | `ChallengeSummary` | The list of past challenges, newest first, each with its state, rounds answered and weighted score. Carries no rubric or reference solution. |
+| **Attempt** | `TopicStats.attempts` | Any challenge started in a topic, graded or not. A challenge revealed before any graded round is an attempt without a weighted score. |
+| **Topic stats** | `TopicStats` | Per topic: attempts, how many were graded, the average weighted score, the trend and the weakest dimensions. Weakest topic first. |
+| **Trend** | `TopicStats.trend` | The latest weighted score in a topic minus the mean of the earlier ones, in points. Needs two graded attempts. |
+| **Weakest dimensions** | `DimensionStat` | The 2 dimension keys with the lowest average score (0 to `MAX_SCORE`) over the last graded round of each challenge in a topic; ties by key. Only keys are sent, since dimension names are rubric text. |
 
 ## Challenge states
 
