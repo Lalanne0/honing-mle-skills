@@ -2,17 +2,20 @@ from collections.abc import Sequence
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
+import httpx2
 import pytest
 from httpx2 import Response
+from pydantic import SecretStr
 
 from app.challenge import Challenge, Round
 from app.domain import Complete, Completed, FollowUp, Level, Revealed, State, Topic, Verdict
 from app.llm.errors import LLMSchemaError
 from app.llm.fake import FakeLLM
+from app.llm.gateway import OpenAICompatibleLLM
 from app.llm.prompts import PastRound
 from app.llm.schemas import GeneratedChallenge, GradeResult
 from app.repository import ChallengeRepository
-from tests.api_harness import Harness, assert_no_hidden_text
+from tests.api_harness import HIDDEN_TEXT, Harness, assert_no_hidden_text
 
 FOLLOW_UP = {"kind": "follow_up", "question": "Fake follow-up: how would this scale 10x?"}
 SCORES = {"requirements": 3, "architecture": 3, "trade_offs": 3}
@@ -238,6 +241,25 @@ def test_a_round_stored_while_grading_returns_409_and_keeps_the_first(h: Harness
     stored = h.repository.get(UUID(challenge_id))
     assert [r.answer_md for r in stored.rounds] == ["racer"]
     assert stored.state == Completed()
+
+
+def test_a_gateway_error_that_echoes_the_prompt_never_leaks_hidden_text(h: Harness) -> None:
+    challenge_id = new_challenge(h)
+    echo = {"error": {"message": "bad request: " + " ".join(HIDDEN_TEXT)}}
+    h.llm = OpenAICompatibleLLM(
+        base_url="https://gateway.test/v1",
+        api_key=SecretStr("sk-test"),
+        model="test-model",
+        http_client=httpx2.Client(
+            transport=httpx2.MockTransport(lambda _: httpx2.Response(400, json=echo))
+        ),
+    )
+
+    response = answer(h, challenge_id, 1)
+
+    assert response.status_code == 502
+    assert "HTTP 400" in response.json()["detail"]
+    assert_no_hidden_text(response)
 
 
 def test_a_model_failure_returns_502_and_stores_nothing(h: Harness) -> None:

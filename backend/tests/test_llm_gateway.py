@@ -381,15 +381,22 @@ def test_status_errors_say_which_status_came_back() -> None:
         gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
 
 
-def test_status_errors_carry_the_gateway_message_without_the_key() -> None:
+def test_status_errors_log_the_gateway_message_but_never_raise_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # The error reaches API responses, and a gateway may echo the prompt, which
+    # holds the hidden reference solution. So the message goes to the log only.
     body = {"error": {"message": f"Invalid schema for 'scores' (key {KEY})"}}
     gateway = Gateway(httpx2.Response(400, json=body, headers={"x-api-key": KEY}))
 
-    with pytest.raises(LLMError) as caught:
+    with caplog.at_level(logging.WARNING, logger="app.llm"), pytest.raises(LLMError) as caught:
         gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
 
     assert "HTTP 400" in str(caught.value)
-    assert "Invalid schema for 'scores' (key [redacted])" in str(caught.value)
+    assert "Invalid schema" not in str(caught.value)
+    assert "Invalid schema for 'scores' (key [redacted])" in caplog.text
+    assert "HTTP 400" in caplog.text
+    assert KEY not in caplog.text
     assert_key_not_leaked(caught.value)
 
 
@@ -403,11 +410,11 @@ def test_status_errors_carry_the_gateway_message_without_the_key() -> None:
     ],
 )
 def test_the_gateway_message_is_found_in_any_error_body_and_truncated(
-    body: dict[str, Any], expected: str
+    body: dict[str, Any], expected: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     gateway = Gateway(httpx2.Response(400, json=body))
 
-    with pytest.raises(LLMError) as caught:
+    with caplog.at_level(logging.WARNING, logger="app.llm"), pytest.raises(LLMError):
         gateway.llm().generate(Level.MID, Topic.DATA_PIPELINES)
 
-    assert str(caught.value).endswith(f": {expected}")
+    assert caplog.records[-1].getMessage().endswith(f": {expected}")

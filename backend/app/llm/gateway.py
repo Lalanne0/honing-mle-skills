@@ -37,7 +37,7 @@ TIMEOUT_SECONDS = 120.0
 MAX_TOKENS = 8192
 """Room for a full scenario, reference solution and rubric."""
 MAX_GATEWAY_MESSAGE = 500
-"""Characters of the gateway's error message kept in a typed error."""
+"""Characters of the gateway's error message kept in the server log."""
 
 
 def _retry_after(response: httpx2.Response) -> float | None:
@@ -65,10 +65,10 @@ def _typed_error(error: openai.APIError, secret: str) -> LLMError:
     if not isinstance(error, openai.APIStatusError):
         return LLMError(f"LLM gateway call failed: {type(error).__name__}")
     status = error.status_code
-    message = (
-        f"LLM gateway returned HTTP {status} (request id {error.request_id}): "
-        f"{_gateway_message(error.body, secret)}"
-    )
+    message = f"LLM gateway returned HTTP {status} (request id {error.request_id})"
+    # The gateway's own message is logged, never raised: the error reaches API responses,
+    # and a gateway that echoes the request would quote the hidden reference solution.
+    logger.warning("%s: %s", message, _gateway_message(error.body, secret))
     if status == 429:
         return LLMRateLimitedError(message, _retry_after(error.response))
     if status >= 500:
