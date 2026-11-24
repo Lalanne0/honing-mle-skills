@@ -83,3 +83,15 @@ def test_app_db_path_puts_the_database_where_it_says(
 
     assert throwaway.exists()
     assert not (tmp_path / "data" / "app.db").exists()
+
+
+def test_app_db_path_with_a_question_mark_is_a_file_name_not_a_query(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    throwaway = tmp_path / "results?old.db"
+    monkeypatch.setenv("APP_DB_PATH", str(throwaway))
+
+    with TestClient(fastapi_app) as client:
+        assert client.get("/api/health").status_code == 200
+
+    assert throwaway.exists()
