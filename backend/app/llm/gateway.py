@@ -91,6 +91,17 @@ def _log_usage(completion: ChatCompletion, call: str, attempt: int) -> None:
     )
 
 
+def _error_summary(error: ValidationError) -> str:
+    """Where validation failed and Pydantic's fixed error type, e.g. `rubric.dimensions: too_short`.
+
+    Never the messages or inputs: they can quote the model's reply, which holds the
+    hidden reference solution and rubric, and this summary can reach an API response.
+    """
+    return "; ".join(
+        f"{'.'.join(map(str, e['loc'])) or 'reply'}: {e['type']}" for e in error.errors()
+    )
+
+
 def _retry_note(error: ValidationError) -> str:
     return (
         "Your reply failed validation:\n\n"
@@ -145,7 +156,9 @@ class OpenAICompatibleLLM:
         try:
             return schema.model_validate_json(text, context=context)
         except ValidationError as error:
-            raise LLMSchemaError(f"{call} reply failed validation twice:\n{error}") from error
+            raise LLMSchemaError(
+                f"{call} reply failed validation twice: {_error_summary(error)}"
+            ) from error
 
     def _complete(
         self,

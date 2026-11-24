@@ -18,8 +18,10 @@ def make_engine(path: Path = DEFAULT_DB_PATH) -> Engine:
 
 
 def memory_engine() -> Engine:
-    """An in-memory database with its tables, shared by every session on the engine."""
-    engine = create_engine("sqlite://", poolclass=StaticPool)
+    """An in-memory database with its tables, shared by every session and thread on the engine."""
+    engine = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
     create_tables(engine)
     return engine
 
