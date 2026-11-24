@@ -1,7 +1,7 @@
 TOOLS_DIR ?= $(HOME)/tools
 SRC       ?= backend/app frontend/src
 
-.PHONY: install dev test lint crap dry mutate
+.PHONY: install dev test lint e2e crap dry mutate
 
 install:
 	cd backend && uv sync
@@ -17,6 +17,10 @@ test:
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app tests
 	cd frontend && npx oxlint && npm run typecheck
+
+# Full flow in a real browser against LLM_MODE=fake and a throwaway database: no key, no cost.
+e2e:
+	cd frontend && npx playwright install chromium && npx playwright test
 
 crap:
 	$(TOOLS_DIR)/crapper/crapper $(SRC)

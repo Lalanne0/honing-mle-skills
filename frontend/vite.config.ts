@@ -1,6 +1,6 @@
-/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 
 // Overridable so parallel worktrees can run `make dev` side by side.
 const backendPort = process.env.BACKEND_PORT ?? '8000'
@@ -14,5 +14,6 @@ export default defineConfig({
     strictPort: true,
     proxy: { '/api': `http://127.0.0.1:${backendPort}` },
   },
-  test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] },
+  // e2e/ holds the Playwright suite (`make e2e`), not Vitest tests.
+  test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'], exclude: [...configDefaults.exclude, 'e2e/**'] },
 })
