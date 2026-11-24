@@ -41,6 +41,13 @@ describe('useApi', () => {
     expect(error.message).toBe('bug')
   })
 
+  it('uses a thrown value that is not an Error as the message', async () => {
+    const { result } = renderHook(() => useApi('a', () => Promise.reject('plain text')))
+
+    await waitFor(() => expect(result.current.state.status).toBe('error'))
+    expect((result.current.state as { error: ApiError }).error.message).toBe('plain text')
+  })
+
   it('loads again on retry', async () => {
     const load = vi.fn().mockRejectedValueOnce(new ApiError('network', 'down')).mockResolvedValueOnce('back')
     const { result } = renderHook(() => useApi('a', load))
@@ -65,6 +72,36 @@ describe('useApi', () => {
 
     await act(async () => second.resolve('fresh'))
     expect(result.current.state).toEqual({ status: 'ok', data: 'fresh' })
+  })
+
+  it('does not show an old result when the key returns to it while another load is pending', async () => {
+    const pending = deferred<string>()
+    const again = deferred<string>()
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce('first a')
+      .mockReturnValueOnce(pending.promise)
+      .mockReturnValueOnce(again.promise)
+    const { result, rerender } = renderHook(({ key }) => useApi(key, load), { initialProps: { key: 'a' } })
+    await waitFor(() => expect(result.current.state).toEqual({ status: 'ok', data: 'first a' }))
+
+    rerender({ key: 'b' })
+    rerender({ key: 'a' })
+
+    expect(result.current.state).toEqual({ status: 'loading' })
+    await act(async () => again.resolve('second a'))
+    expect(result.current.state).toEqual({ status: 'ok', data: 'second a' })
+  })
+
+  it('turns a load that throws before returning a promise into a server error', async () => {
+    const { result } = renderHook(() =>
+      useApi('a', () => {
+        throw new Error('bug')
+      }),
+    )
+
+    await waitFor(() => expect(result.current.state.status).toBe('error'))
+    expect((result.current.state as { error: ApiError }).error.message).toBe('bug')
   })
 
   it('aborts the load when the component unmounts', () => {

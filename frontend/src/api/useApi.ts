@@ -20,10 +20,18 @@ export function useApi<T>(key: string, load: (signal: AbortSignal) => Promise<T>
   })
 
   const id = `${attempt}:${key}`
+  // A new request forgets the last result, so coming back to an earlier key shows
+  // loading rather than that key's old reply.
+  const [shownFor, setShownFor] = useState(id)
+  if (shownFor !== id) {
+    setShownFor(id)
+    setSettled(null)
+  }
+
   useEffect(() => {
     const controller = new AbortController()
-    void latestLoad
-      .current(controller.signal)
+    // Called inside an executor so a load that throws before returning a promise still ends as an error.
+    void new Promise<T>((resolve) => resolve(latestLoad.current(controller.signal)))
       .then(
         (data): Settled<T> => ({ status: 'ok', data }),
         (error: unknown): Settled<T> => ({ status: 'error', error: asApiError(error) }),
