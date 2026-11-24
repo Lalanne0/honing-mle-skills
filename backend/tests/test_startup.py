@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import inspect
 
 import app.main
+from app.domain import Topic
 from app.llm.fake import FakeLLM
 from app.llm.gateway import OpenAICompatibleLLM
 from app.main import app as fastapi_app
@@ -59,3 +60,12 @@ def test_real_mode_refuses_to_start_without_gateway_settings(
         TestClient(fastapi_app),
     ):
         pass
+
+
+def test_challenges_are_created_and_read_back_through_the_real_wiring() -> None:
+    with TestClient(fastapi_app) as client:
+        created = client.post("/api/challenges", json={"level": "mid"}).json()
+        fetched = client.get(f"/api/challenges/{created['id']}").json()
+
+    assert created["topic"] in {t.value for t in Topic}
+    assert fetched == created
