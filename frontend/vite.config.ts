@@ -2,13 +2,17 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+// Overridable so parallel worktrees can run `make dev` side by side.
+const backendPort = process.env.BACKEND_PORT ?? '8000'
+const frontendPort = Number(process.env.FRONTEND_PORT ?? '5173')
+
 export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
-    port: 5173,
+    port: frontendPort,
     strictPort: true,
-    proxy: { '/api': 'http://127.0.0.1:8000' },
+    proxy: { '/api': `http://127.0.0.1:${backendPort}` },
   },
   test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'] },
 })

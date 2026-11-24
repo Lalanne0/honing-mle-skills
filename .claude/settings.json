@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout main)",
+      "Bash(git pull --ff-only)",
+      "Bash(git worktree list)",
+      "Bash(git worktree add --detach ../hms-vin*)",
+      "Bash(git worktree remove ../hms-vin*)",
+      "Bash(git worktree prune)",
+      "Bash(git -C ../hms-vin* status:*)",
+      "Bash(git -C ../hms-vin* branch --show-current)",
+      "Bash(git -C ../hms-vin* rev-parse HEAD)",
+      "Bash(git worktree list --porcelain)",
+      "Bash(git update-ref -d refs/heads/vlalanne0/vin-*)",
+      "Bash(git ls-remote --heads origin vlalanne0/vin-*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh api graphql:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(cmux workspace list:*)",
+      "Bash(cmux new-workspace:*)",
+      "Bash(cmux close-workspace:*)",
+      "Bash(cmux read-screen:*)",
+      "Bash(cmux send --workspace:*)",
+      "Bash(cmux send-key --workspace:*)",
+      "mcp__linear-server__list_issues",
+      "mcp__linear-server__get_issue"
+    ]
+  }
+}

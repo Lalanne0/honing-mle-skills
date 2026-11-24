@@ -3,8 +3,12 @@
 # exit with that server's status. Ctrl-C stops both.
 set -u
 cd "$(dirname "$0")/.."
+# Ports can be overridden so parallel worktrees don't collide. Vite reads the
+# same variables for its own port and for its /api proxy target.
+export BACKEND_PORT="${BACKEND_PORT:-8000}"
+export FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
-(cd backend && exec uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app) &
+(cd backend && exec uv run uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" --reload --reload-dir app) &
 backend=$!
 (cd frontend && exec npm run dev) &
 frontend=$!
