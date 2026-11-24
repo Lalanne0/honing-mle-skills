@@ -22,6 +22,7 @@ export function useAction<A, T>(send: (arg: A, signal: AbortSignal) => Promise<T
     void send(arg, controller.signal).then(
       (result) => {
         inFlight.current = null
+        if (controller.signal.aborted) return
         setState({ status: 'idle' })
         onDone(result)
       },

@@ -10,11 +10,20 @@ vi.mock('../components/MarkdownEditor', () => ({
     initialValue,
     onChange,
     label,
+    readOnly,
   }: {
     initialValue: string
     onChange: (value: string) => void
     label: string
-  }) => <textarea aria-label={label} defaultValue={initialValue} onChange={(e) => onChange(e.target.value)} />,
+    readOnly?: boolean
+  }) => (
+    <textarea
+      aria-label={label}
+      defaultValue={initialValue}
+      readOnly={readOnly}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
 }))
 
 const ID = '6f1c2b1e-0000-4000-8000-000000000017'
@@ -139,6 +148,7 @@ describe('challenge screen', () => {
 
     expect(submitButton()).toBeDisabled()
     expect(submitButton()).toHaveTextContent('Grading…')
+    expect(await editor()).toHaveAttribute('readonly')
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     await act(async () => grading.resolve({ round: round(1, followUp), state: { kind: 'awaiting', round: 2 } }))

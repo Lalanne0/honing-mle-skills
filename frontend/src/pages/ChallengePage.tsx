@@ -185,7 +185,7 @@ function AnswerPanel({ challengeId, round, question, onGraded }: AnswerPanelProp
           <Markdown>{answer || '_Nothing written yet._'}</Markdown>
         </div>
       ) : (
-        <MarkdownEditor initialValue={answer} onChange={edit} label="Your answer" />
+        <MarkdownEditor initialValue={answer} onChange={edit} label="Your answer" readOnly={grading} />
       )}
       <ActionStatusView state={grade.state} running="Grading your answer…" onRetry={() => grade.run(answer)} />
       <div className="answer__submit">

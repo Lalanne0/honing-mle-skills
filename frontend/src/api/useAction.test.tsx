@@ -51,6 +51,18 @@ describe('useAction', () => {
     expect(onDone).toHaveBeenCalledWith('ok')
   })
 
+  it('drops a reply that arrives after unmount', async () => {
+    const pending = controlled<string>()
+    const onDone = vi.fn()
+    const { result, unmount } = renderHook(() => useAction(() => pending.promise, onDone))
+    act(() => result.current.run(undefined))
+
+    unmount()
+    await act(async () => pending.resolve('late'))
+
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
   it('cancels the request on unmount and ignores its failure', async () => {
     const pending = controlled<string>()
     let signal: AbortSignal | undefined

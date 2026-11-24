@@ -1,5 +1,5 @@
 import { markdown } from '@codemirror/lang-markdown'
-import { EditorState } from '@codemirror/state'
+import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { minimalSetup } from 'codemirror'
 import { useEffect, useRef } from 'react'
@@ -9,23 +9,30 @@ type MarkdownEditorProps = {
   initialValue: string
   onChange: (value: string) => void
   label: string
+  /** While true the text can't be changed, for example while it is being graded. */
+  readOnly?: boolean
 }
 
+const editable = (readOnly: boolean) => [EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]
+
 /** A CodeMirror 6 Markdown editor. It owns its text and reports every edit. */
-export function MarkdownEditor({ initialValue, onChange, label }: MarkdownEditorProps) {
+export function MarkdownEditor({ initialValue, onChange, label, readOnly = false }: MarkdownEditorProps) {
   const host = useRef<HTMLDivElement>(null)
-  const latest = useRef({ initialValue, onChange, label })
+  const view = useRef<EditorView | null>(null)
+  const editability = useRef(new Compartment())
+  const latest = useRef({ initialValue, onChange, label, readOnly })
   useEffect(() => {
     latest.current.onChange = onChange
   })
 
   useEffect(() => {
-    const view = new EditorView({
+    const editor = new EditorView({
       parent: host.current as HTMLDivElement,
       state: EditorState.create({
         doc: latest.current.initialValue,
         extensions: [
           minimalSetup,
+          editability.current.of(editable(latest.current.readOnly)),
           markdown(),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': latest.current.label, 'aria-multiline': 'true' }),
@@ -35,8 +42,13 @@ export function MarkdownEditor({ initialValue, onChange, label }: MarkdownEditor
         ],
       }),
     })
-    return () => view.destroy()
+    view.current = editor
+    return () => editor.destroy()
   }, [])
+
+  useEffect(() => {
+    view.current?.dispatch({ effects: editability.current.reconfigure(editable(readOnly)) })
+  }, [readOnly])
 
   return <div ref={host} className="editor" />
 }

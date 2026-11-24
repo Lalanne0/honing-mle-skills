@@ -27,6 +27,19 @@ describe('MarkdownEditor', () => {
     expect(onChange).toHaveBeenLastCalledWith('ab')
   })
 
+  it('can be made read-only and editable again', () => {
+    const { container, rerender } = render(
+      <MarkdownEditor initialValue="" onChange={() => {}} label="Your answer" readOnly />,
+    )
+    expect(viewOf(container).state.readOnly).toBe(true)
+    expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'false')
+
+    rerender(<MarkdownEditor initialValue="" onChange={() => {}} label="Your answer" />)
+
+    expect(viewOf(container).state.readOnly).toBe(false)
+    expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'true')
+  })
+
   it('stops the editor when it goes away', () => {
     const { container, unmount } = render(<MarkdownEditor initialValue="" onChange={() => {}} label="Your answer" />)
     const view = viewOf(container)
