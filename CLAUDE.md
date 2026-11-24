@@ -21,7 +21,7 @@ make mutate   # mutation testing   (~/tools/mutator)
 - Servers bind to 127.0.0.1 only.
 - The reference solution and rubric never leave the backend before reveal. `ChallengePublic` and `ChallengeRevealed` are separate models, and the leak test must stay green.
 - Every LLM call goes through `OpenAICompatibleLLM`: `chat.completions.create` with `response_format` json_schema (`strict: false`), because the gateway isn't trusted to enforce it. The reply is validated with the Pydantic model plus domain validation. On failure, retry once with the validation error, then raise a typed `LLMError`. 429 and 5xx responses also become typed errors.
-- Tests use `FakeLLM`. Live tests are marked `-m live`, go through the gateway, and run only when the user asks, because they cost money.
+- Tests use `FakeLLM`. Live tests are marked `-m live`, go through the gateway, and run only when the user asks, because they cost money. Exception: a worker launched by /next may run one live smoke test per issue when the issue requires it.
 - Domain terms are defined in `docs/glossary.md`. Use them consistently in code, UI and issues.
 
 ## Workflow
