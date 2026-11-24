@@ -1,24 +1,17 @@
 import json
 import random
-from collections.abc import Iterator
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx2 import Response
 
-from app.api import get_llm, get_repository, get_rng
 from app.challenge import Challenge
-from app.db import memory_engine
 from app.domain import Level, Revealed, Topic
 from app.llm.errors import LLMError, LLMRateLimitedError, LLMSchemaError
 from app.llm.fake import RUBRIC, FakeLLM
 from app.llm.schemas import GeneratedChallenge
 from app.main import app
-from app.repository import ChallengeRepository
-
-FAKE_REFERENCE = FakeLLM().generate(Level.MID, Topic.MODEL_SERVING).reference_md
-HIDDEN_TEXT = [FAKE_REFERENCE, *(d.full_marks_criteria for d in RUBRIC.dimensions)]
+from tests.api_harness import FAKE_REFERENCE, Harness, assert_no_hidden_text
 
 
 class FailingLLM(FakeLLM):
@@ -28,33 +21,6 @@ class FailingLLM(FakeLLM):
 
     def generate(self, level: Level, topic: Topic) -> GeneratedChallenge:
         raise self._error
-
-
-class Harness:
-    def __init__(self) -> None:
-        self.repository = ChallengeRepository(memory_engine())
-        self.llm: FakeLLM = FakeLLM()
-        self.rng = random.Random(7)
-        app.dependency_overrides[get_repository] = lambda: self.repository
-        app.dependency_overrides[get_llm] = lambda: self.llm
-        app.dependency_overrides[get_rng] = lambda: self.rng
-        self.client = TestClient(app)
-
-    def create(self, **body: str) -> Response:
-        return self.client.post("/api/challenges", json=body)
-
-
-@pytest.fixture
-def h() -> Iterator[Harness]:
-    yield Harness()
-    app.dependency_overrides.clear()
-
-
-def assert_no_hidden_text(response: Response) -> None:
-    for text in HIDDEN_TEXT:
-        assert text not in response.text
-    assert "reference_md" not in response.json()
-    assert "rubric" not in response.json()
 
 
 # --- create ----------------------------------------------------------------------

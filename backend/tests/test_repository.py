@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 
 from app.challenge import Challenge, Round
 from app.db import create_tables, make_engine, memory_engine
@@ -122,6 +122,20 @@ def test_rounds_read_back_in_order(repo: ChallengeRepository) -> None:
         repo.add_round(created.id, round_(n), Awaiting(round=min(n + 1, 3)))
 
     assert [r.n for r in repo.get(created.id).rounds] == [1, 2, 3]
+
+
+def test_a_challenge_and_its_rounds_are_read_in_one_statement(
+    engine: Engine, repo: ChallengeRepository
+) -> None:
+    """One statement is one SQLite snapshot: a round committed by another request can
+    never land between reading the state and reading the rounds."""
+    stored = challenge(state=Awaiting(round=3), rounds=(round_(1), round_(2)))
+    repo.create(stored)
+    statements: list[str] = []
+    event.listen(engine, "before_cursor_execute", lambda *a: statements.append(a[2]))
+
+    assert repo.get(stored.id) == stored
+    assert len(statements) == 1
 
 
 def test_a_duplicate_round_is_rejected_and_nothing_changes(repo: ChallengeRepository) -> None:

@@ -31,8 +31,18 @@ class ChallengeRepository:
             session.commit()
 
     def get(self, challenge_id: UUID) -> Challenge:
+        """Read the challenge and its rounds in one statement, so both come from one snapshot."""
+        query = (
+            select(ChallengeRow, RoundRow)
+            .join(RoundRow, isouter=True)
+            .where(ChallengeRow.id == str(challenge_id))
+            .order_by(col(RoundRow.n))
+        )
         with Session(self._engine) as session:
-            return _from_rows(_find(session, challenge_id), _rounds(session, [str(challenge_id)]))
+            pairs = session.exec(query).all()
+        if not pairs:
+            raise ChallengeNotFoundError(f"no challenge {challenge_id}")
+        return _from_rows(pairs[0][0], [r for _, r in pairs if r is not None])
 
     def add_round(self, challenge_id: UUID, round_: Round, state: State) -> Challenge:
         """Store a graded round and the state it led to, together or not at all."""
