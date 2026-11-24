@@ -13,7 +13,6 @@ from app.domain import (
     Completed,
     Dimension,
     FollowUp,
-    IllegalTransitionError,
     Level,
     Revealed,
     Rubric,
@@ -21,7 +20,7 @@ from app.domain import (
     Topic,
 )
 from app.llm.schemas import Comparison
-from app.repository import ChallengeNotFoundError, ChallengeRepository, DuplicateRoundError
+from app.repository import ChallengeChangedError, ChallengeNotFoundError, ChallengeRepository
 
 RUBRIC = Rubric(
     dimensions=tuple(
@@ -153,7 +152,7 @@ def test_a_duplicate_round_is_rejected_and_nothing_changes(repo: ChallengeReposi
     repo.create(created)
     after_first = repo.add_round(created.id, round_(1), Awaiting(round=2))
 
-    with pytest.raises(DuplicateRoundError):
+    with pytest.raises(ChallengeChangedError):
         repo.add_round(created.id, round_(1, follow_up=False), Completed())
 
     assert repo.get(created.id) == after_first
@@ -183,9 +182,9 @@ def test_a_round_is_refused_once_the_challenge_no_longer_takes_answers(
     """A reveal stored while an answer was being graded wins: the late round is not stored."""
     created = challenge()
     repo.create(created)
-    revealed = repo.reveal(created.id, comparison())
+    revealed = repo.reveal(created, comparison())
 
-    with pytest.raises(IllegalTransitionError):
+    with pytest.raises(ChallengeChangedError):
         repo.add_round(created.id, round_(1), Awaiting(round=2))
 
     assert repo.get(created.id) == revealed
@@ -200,7 +199,7 @@ def test_revealing_stores_the_comparison_with_the_revealed_state(
     created = challenge(state=Awaiting(round=2), rounds=(round_(1),))
     repo.create(created)
 
-    revealed = repo.reveal(created.id, comparison())
+    revealed = repo.reveal(created, comparison())
 
     assert revealed == created.model_copy(update={"state": Revealed(), "comparison": comparison()})
     assert repo.get(created.id) == revealed
@@ -209,9 +208,9 @@ def test_revealing_stores_the_comparison_with_the_revealed_state(
 def test_revealing_again_keeps_the_first_comparison(repo: ChallengeRepository) -> None:
     created = challenge()
     repo.create(created)
-    first = repo.reveal(created.id, comparison("First."))
+    first = repo.reveal(created, comparison("First."))
 
-    again = repo.reveal(created.id, comparison("Second."))
+    again = repo.reveal(created, comparison("Second."))
 
     assert again == first
     assert repo.get(created.id).comparison == comparison("First.")
@@ -219,7 +218,21 @@ def test_revealing_again_keeps_the_first_comparison(repo: ChallengeRepository) -
 
 def test_revealing_an_unknown_challenge_raises(repo: ChallengeRepository) -> None:
     with pytest.raises(ChallengeNotFoundError):
-        repo.reveal(uuid4(), comparison())
+        repo.reveal(challenge(), comparison())
+
+
+def test_revealing_a_challenge_answered_since_it_was_read_stores_nothing(
+    repo: ChallengeRepository,
+) -> None:
+    """A comparison written from round 1 must not be stored beside round 2."""
+    read = challenge(state=Awaiting(round=2), rounds=(round_(1),))
+    repo.create(read)
+    answered = repo.add_round(read.id, round_(2), Awaiting(round=3))
+
+    with pytest.raises(ChallengeChangedError):
+        repo.reveal(read, comparison())
+
+    assert repo.get(read.id) == answered
 
 
 # --- list ----------------------------------------------------------------------------
@@ -233,6 +246,22 @@ def test_list_is_newest_first_with_rounds(repo: ChallengeRepository) -> None:
     with_round = repo.add_round(older.id, round_(1), Awaiting(round=2))
 
     assert repo.list() == [newer, with_round]
+
+
+def test_list_reads_challenges_rounds_and_comparisons_in_one_statement(
+    engine: Engine, repo: ChallengeRepository
+) -> None:
+    """One statement is one SQLite snapshot: a reveal committed by another request can never
+    land between reading a challenge's state and reading its comparison."""
+    answered = challenge(state=Awaiting(round=2), rounds=(round_(1),))
+    revealed = challenge(created_at=T0 + timedelta(minutes=5), state=Revealed())
+    repo.create(answered)
+    repo.create(revealed)
+    statements: list[str] = []
+    event.listen(engine, "before_cursor_execute", lambda *a: statements.append(a[2]))
+
+    assert repo.list() == [revealed, answered]
+    assert len(statements) == 1
 
 
 def test_list_filters_by_topic_and_level(repo: ChallengeRepository) -> None:

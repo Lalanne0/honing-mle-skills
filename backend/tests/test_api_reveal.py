@@ -5,11 +5,13 @@ from uuid import UUID, uuid4
 import pytest
 from httpx2 import Response
 
-from app.domain import Revealed
+from app.challenge import Round
+from app.domain import Awaiting, FollowUp, Revealed
 from app.llm.errors import LLMSchemaError
 from app.llm.fake import RUBRIC, FakeLLM
 from app.llm.prompts import PastRound
 from app.llm.schemas import Comparison, GeneratedChallenge
+from app.repository import ChallengeRepository
 from tests.api_harness import FAKE_REFERENCE, Harness
 
 NOTE_KEYS = {d.key for d in RUBRIC.dimensions}
@@ -30,6 +32,26 @@ class CompareSpyLLM(FakeLLM):
 class FailingCompareLLM(FakeLLM):
     def compare(self, challenge: GeneratedChallenge, rounds: Sequence[PastRound]) -> Comparison:
         raise LLMSchemaError("reply failed validation twice")
+
+
+class AnsweringLLM(FakeLLM):
+    """Stores round 2 itself while comparing, like an answer committed during the reveal."""
+
+    def __init__(self, repository: ChallengeRepository, challenge_id: UUID) -> None:
+        super().__init__()
+        self._repository = repository
+        self._challenge_id = challenge_id
+
+    def compare(self, challenge: GeneratedChallenge, rounds: Sequence[PastRound]) -> Comparison:
+        late = Round(
+            n=2,
+            answer_md="Late.",
+            scores=dict.fromkeys(NOTE_KEYS, 3),
+            comment="Fake comment.",
+            verdict=FollowUp(question="More?"),
+        )
+        self._repository.add_round(self._challenge_id, late, Awaiting(round=3))
+        return super().compare(challenge, rounds)
 
 
 @pytest.fixture
@@ -164,3 +186,18 @@ def test_a_model_failure_returns_502_and_keeps_the_challenge_hidden(h: Harness) 
     assert stored.state != Revealed()
     assert stored.comparison is None
     assert answer(h, challenge_id, 2).status_code == 200
+
+
+def test_an_answer_stored_during_the_reveal_returns_409_and_stores_no_comparison(
+    h: Harness,
+) -> None:
+    challenge_id = new_challenge(h)
+    answer(h, challenge_id, 1)
+    h.llm = AnsweringLLM(h.repository, UUID(challenge_id))
+
+    response = reveal(h, challenge_id)
+
+    assert response.status_code == 409
+    stored = h.repository.get(UUID(challenge_id))
+    assert stored.state == Awaiting(round=3)
+    assert stored.comparison is None

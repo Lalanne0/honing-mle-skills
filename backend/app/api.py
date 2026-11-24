@@ -24,7 +24,7 @@ from app.domain import (
 )
 from app.llm.errors import LLMError, LLMRateLimitedError
 from app.llm.port import LLMPort
-from app.repository import ChallengeNotFoundError, ChallengeRepository, DuplicateRoundError
+from app.repository import ChallengeChangedError, ChallengeNotFoundError, ChallengeRepository
 from app.revealing import compare
 from app.views import ChallengePublic, ChallengeRevealed, view
 
@@ -120,10 +120,11 @@ def submit_answer(
 def reveal_challenge(challenge_id: UUID, llm: Llm, repository: Repository) -> ChallengeRevealed:
     """Show the reference solution and rubric, with a comparison against the answers given.
     Allowed in any state. The comparison is written once: revealing again returns the stored
-    one without a model call. Nothing is stored if the model fails."""
+    one without a model call. Nothing is stored if the model fails, or if an answer was
+    stored while the comparison was written (409: reveal again)."""
     challenge = repository.get(challenge_id)
     if challenge.comparison is None:
-        challenge = repository.reveal(challenge_id, compare(llm, challenge))
+        challenge = repository.reveal(challenge, compare(llm, challenge))
     return ChallengeRevealed.model_validate(challenge)
 
 
@@ -160,6 +161,6 @@ def install(app: FastAPI) -> None:
     app.include_router(router)
     app.add_exception_handler(ChallengeNotFoundError, _detail(404))
     app.add_exception_handler(IllegalTransitionError, _detail(409))
-    app.add_exception_handler(DuplicateRoundError, _detail(409))
+    app.add_exception_handler(ChallengeChangedError, _detail(409))
     app.add_exception_handler(LLMRateLimitedError, _rate_limited)
     app.add_exception_handler(LLMError, _llm_failed)

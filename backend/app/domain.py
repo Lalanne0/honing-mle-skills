@@ -140,8 +140,7 @@ class WrongRoundError(IllegalTransitionError):
     """The answer is for a round other than the one awaited, e.g. a duplicate submit."""
 
 
-def awaiting(state: State) -> Awaiting:
-    """`state` if it accepts an answer; raise otherwise."""
+def _awaiting(state: State) -> Awaiting:
     if not isinstance(state, Awaiting):
         raise IllegalTransitionError(f"cannot accept an answer in state {state.kind!r}")
     return state
@@ -149,7 +148,7 @@ def awaiting(state: State) -> Awaiting:
 
 def check_answer(state: State, round_number: int) -> None:
     """Raise unless `state` accepts an answer for `round_number`. Check before grading."""
-    awaited = awaiting(state).round
+    awaited = _awaiting(state).round
     if round_number != awaited:
         raise WrongRoundError(f"the challenge awaits round {awaited}, got {round_number}")
 
@@ -158,7 +157,7 @@ def advance(state: State, event: Event) -> State:
     """Apply one event to a challenge state. All challenge rules live here."""
     if isinstance(event, RevealRequested):
         return Revealed()
-    state = awaiting(state)
+    state = _awaiting(state)
     if isinstance(event.verdict, FollowUp) and state.round < MAX_ROUNDS:
         return Awaiting(round=state.round + 1)
     return Completed()
