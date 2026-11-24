@@ -228,3 +228,4 @@ backend/data/
 target/
 frontend/coverage/
 .playwright-mcp/
+.worker-prompt.md
