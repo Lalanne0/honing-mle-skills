@@ -80,6 +80,14 @@ describe('request', () => {
     )
   })
 
+  it('leaves out the field for a 422 about the body as a whole', async () => {
+    stubFetch(() =>
+      Promise.resolve(json({ detail: [{ loc: ['body'], msg: 'JSON decode error', type: 'json_invalid' }] }, { status: 422 })),
+    )
+
+    expect((await failure(request('/api/x'))).message).toBe('JSON decode error.')
+  })
+
   it('maps 502 to a failed model call', async () => {
     stubFetch(() =>
       Promise.resolve(json({ detail: 'The model call failed, so nothing was saved: boom' }, { status: 502 })),
