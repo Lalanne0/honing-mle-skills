@@ -75,7 +75,8 @@ export interface paths {
          * Reveal Challenge
          * @description Show the reference solution and rubric, with a comparison against the answers given.
          *     Allowed in any state. The comparison is written once: revealing again returns the stored
-         *     one without a model call. Nothing is stored if the model fails.
+         *     one without a model call. Nothing is stored if the model fails, or if an answer was
+         *     stored while the comparison was written (409: reveal again).
          */
         post: operations["reveal_challenge_api_challenges__challenge_id__reveal_post"];
         delete?: never;
